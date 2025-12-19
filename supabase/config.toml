@@ -1,1 +1,10 @@
 project_id = "ijotcekseqoasueihvsh"
+
+[functions.analyze-food]
+verify_jwt = false
+
+[functions.revenuecat]
+verify_jwt = false
+
+[functions.barcode-lookup]
+verify_jwt = false
