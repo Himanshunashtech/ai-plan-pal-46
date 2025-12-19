@@ -14,7 +14,222 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      daily_nutrition_logs: {
+        Row: {
+          created_at: string
+          id: string
+          log_date: string
+          notes: string | null
+          total_calories: number | null
+          total_carbs: number | null
+          total_fats: number | null
+          total_protein: number | null
+          updated_at: string
+          user_id: string
+          water_intake: number | null
+          weight: number | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          log_date?: string
+          notes?: string | null
+          total_calories?: number | null
+          total_carbs?: number | null
+          total_fats?: number | null
+          total_protein?: number | null
+          updated_at?: string
+          user_id: string
+          water_intake?: number | null
+          weight?: number | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          log_date?: string
+          notes?: string | null
+          total_calories?: number | null
+          total_carbs?: number | null
+          total_fats?: number | null
+          total_protein?: number | null
+          updated_at?: string
+          user_id?: string
+          water_intake?: number | null
+          weight?: number | null
+        }
+        Relationships: []
+      }
+      food_entries: {
+        Row: {
+          barcode: string | null
+          calories: number
+          carbs: number | null
+          created_at: string
+          fats: number | null
+          id: string
+          image_url: string | null
+          logged_at: string
+          meal_type: string | null
+          name: string
+          protein: number | null
+          serving_size: string | null
+          user_id: string
+        }
+        Insert: {
+          barcode?: string | null
+          calories?: number
+          carbs?: number | null
+          created_at?: string
+          fats?: number | null
+          id?: string
+          image_url?: string | null
+          logged_at?: string
+          meal_type?: string | null
+          name: string
+          protein?: number | null
+          serving_size?: string | null
+          user_id: string
+        }
+        Update: {
+          barcode?: string | null
+          calories?: number
+          carbs?: number | null
+          created_at?: string
+          fats?: number | null
+          id?: string
+          image_url?: string | null
+          logged_at?: string
+          meal_type?: string | null
+          name?: string
+          protein?: number | null
+          serving_size?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          activity_level: string | null
+          age: number | null
+          allergies: string[] | null
+          avatar_url: string | null
+          cooking_time: string | null
+          created_at: string
+          current_weight: number | null
+          daily_calories: number | null
+          daily_carbs: number | null
+          daily_fats: number | null
+          daily_protein: number | null
+          diet_type: string | null
+          exercise_frequency: number | null
+          exercise_type: string[] | null
+          full_name: string | null
+          gender: string | null
+          goal: string | null
+          health_conditions: string[] | null
+          height: number | null
+          height_unit: string | null
+          id: string
+          meals_per_day: number | null
+          medications: boolean | null
+          motivation: string[] | null
+          onboarding_completed: boolean | null
+          previous_diets: boolean | null
+          sleep_hours: number | null
+          snacking: string | null
+          stress_level: string | null
+          subscription_expires_at: string | null
+          subscription_status: string | null
+          target_date: string | null
+          target_weight: number | null
+          updated_at: string
+          user_id: string
+          water_intake: number | null
+          weekly_goal: number | null
+          weight_unit: string | null
+        }
+        Insert: {
+          activity_level?: string | null
+          age?: number | null
+          allergies?: string[] | null
+          avatar_url?: string | null
+          cooking_time?: string | null
+          created_at?: string
+          current_weight?: number | null
+          daily_calories?: number | null
+          daily_carbs?: number | null
+          daily_fats?: number | null
+          daily_protein?: number | null
+          diet_type?: string | null
+          exercise_frequency?: number | null
+          exercise_type?: string[] | null
+          full_name?: string | null
+          gender?: string | null
+          goal?: string | null
+          health_conditions?: string[] | null
+          height?: number | null
+          height_unit?: string | null
+          id?: string
+          meals_per_day?: number | null
+          medications?: boolean | null
+          motivation?: string[] | null
+          onboarding_completed?: boolean | null
+          previous_diets?: boolean | null
+          sleep_hours?: number | null
+          snacking?: string | null
+          stress_level?: string | null
+          subscription_expires_at?: string | null
+          subscription_status?: string | null
+          target_date?: string | null
+          target_weight?: number | null
+          updated_at?: string
+          user_id: string
+          water_intake?: number | null
+          weekly_goal?: number | null
+          weight_unit?: string | null
+        }
+        Update: {
+          activity_level?: string | null
+          age?: number | null
+          allergies?: string[] | null
+          avatar_url?: string | null
+          cooking_time?: string | null
+          created_at?: string
+          current_weight?: number | null
+          daily_calories?: number | null
+          daily_carbs?: number | null
+          daily_fats?: number | null
+          daily_protein?: number | null
+          diet_type?: string | null
+          exercise_frequency?: number | null
+          exercise_type?: string[] | null
+          full_name?: string | null
+          gender?: string | null
+          goal?: string | null
+          health_conditions?: string[] | null
+          height?: number | null
+          height_unit?: string | null
+          id?: string
+          meals_per_day?: number | null
+          medications?: boolean | null
+          motivation?: string[] | null
+          onboarding_completed?: boolean | null
+          previous_diets?: boolean | null
+          sleep_hours?: number | null
+          snacking?: string | null
+          stress_level?: string | null
+          subscription_expires_at?: string | null
+          subscription_status?: string | null
+          target_date?: string | null
+          target_weight?: number | null
+          updated_at?: string
+          user_id?: string
+          water_intake?: number | null
+          weekly_goal?: number | null
+          weight_unit?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
