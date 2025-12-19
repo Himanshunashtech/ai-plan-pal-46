@@ -1,11 +1,16 @@
 import { useState } from 'react';
-import { Home, BarChart3, Scan, User, Camera, Barcode, Image, BookOpen, Zap } from 'lucide-react';
+import { Home, BarChart3, Scan, User, Camera, Barcode, Image, BookOpen } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
+import FoodScanner from '@/components/scanner/FoodScanner';
+import { FoodAnalysisResult, saveFoodEntry, uploadFoodImage } from '@/lib/api/food-analysis';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from '@/hooks/use-toast';
 
 const Scanner = () => {
   const location = useLocation();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('scan');
+  const [showCamera, setShowCamera] = useState(true);
 
   const tabs = [
     { id: 'scan', icon: Camera, label: 'Scan Food' },
@@ -14,58 +19,70 @@ const Scanner = () => {
     { id: 'library', icon: BookOpen, label: 'Library' },
   ];
 
+  const handleFoodLogged = async (result: FoodAnalysisResult, imageBase64: string) => {
+    if (!user) {
+      toast({ title: 'Error', description: 'Please log in to save food entries', variant: 'destructive' });
+      return;
+    }
+
+    try {
+      // Upload image to storage
+      const imageUrl = await uploadFoodImage(user.id, imageBase64);
+      
+      // Save food entry to database
+      await saveFoodEntry(user.id, result, imageUrl);
+      
+      toast({ title: 'Success!', description: `${result.foodName} logged - ${result.totalNutrition.calories} calories` });
+    } catch (error) {
+      console.error('Error saving food:', error);
+      toast({ title: 'Error', description: 'Failed to save food entry', variant: 'destructive' });
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-foreground flex flex-col safe-area-top safe-area-bottom">
-      <div className="flex items-center justify-between px-4 py-4">
-        <Button variant="ghost" size="icon" className="text-primary-foreground">
-          <span className="sr-only">Close</span>×
-        </Button>
-        <div className="flex items-center gap-2 text-primary-foreground">
-          <span className="text-lg">🔥</span>
-          <span className="font-bold">Cal AI</span>
-        </div>
-        <Button variant="ghost" size="icon" className="text-primary-foreground">?</Button>
-      </div>
+    <div className="min-h-screen bg-black flex flex-col safe-area-top safe-area-bottom">
+      {showCamera && (
+        <FoodScanner
+          onClose={() => setShowCamera(false)}
+          onFoodLogged={handleFoodLogged}
+        />
+      )}
 
-      <div className="flex-1 flex flex-col items-center justify-center px-6 pb-48">
-        <div className="w-72 h-72 border-2 border-dashed border-primary-foreground/30 rounded-3xl flex items-center justify-center">
-          <div className="text-center text-primary-foreground/60">
-            <Camera className="w-16 h-16 mx-auto mb-4" />
-            <p>Point camera at food</p>
+      {!showCamera && (
+        <>
+          <div className="flex-1 flex flex-col items-center justify-center px-6 pb-48">
+            <div className="text-center text-white/60">
+              <Camera className="w-16 h-16 mx-auto mb-4" />
+              <p>Tap the button below to scan food</p>
+              <button 
+                onClick={() => setShowCamera(true)}
+                className="mt-6 px-6 py-3 bg-white text-black rounded-full font-medium"
+              >
+                Open Camera
+              </button>
+            </div>
           </div>
-        </div>
-      </div>
 
-      <div className="absolute bottom-32 left-0 right-0 px-6">
-        <div className="bg-card rounded-full p-1 flex justify-around">
-          {tabs.map(({ id, icon: Icon, label }) => (
-            <button
-              key={id}
-              onClick={() => setActiveTab(id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all ${
-                activeTab === id ? 'bg-secondary' : ''
-              }`}
-            >
-              <Icon className="w-4 h-4" />
-              {activeTab === id && <span className="text-sm font-medium">{label}</span>}
-            </button>
-          ))}
-        </div>
-      </div>
+          <div className="absolute bottom-32 left-0 right-0 px-6">
+            <div className="bg-white rounded-full p-1 flex justify-around">
+              {tabs.map(({ id, icon: Icon, label }) => (
+                <button
+                  key={id}
+                  onClick={() => setActiveTab(id)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all ${
+                    activeTab === id ? 'bg-secondary' : ''
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  {activeTab === id && <span className="text-sm font-medium">{label}</span>}
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
 
-      <div className="absolute bottom-44 left-1/2 -translate-x-1/2">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" className="text-primary-foreground">
-            <Zap className="w-6 h-6" />
-          </Button>
-          <button className="w-16 h-16 rounded-full bg-primary-foreground flex items-center justify-center shadow-elevated">
-            <div className="w-14 h-14 rounded-full border-2 border-foreground" />
-          </button>
-          <div className="w-10" />
-        </div>
-      </div>
-
-      <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border safe-area-bottom">
+      <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border safe-area-bottom z-50">
         <div className="flex justify-around py-3">
           {[
             { icon: Home, path: '/dashboard', label: 'Home' },
