@@ -232,37 +232,18 @@ const Dashboard = () => {
           })}
         </div>
 
-        <div className="bg-card rounded-3xl p-6 shadow-soft mb-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-4xl font-bold">{caloriesLeft}</p>
-              <p className="text-muted-foreground">Calories left</p>
-            </div>
-            <NutritionRing value={caloriesLeft} max={goals.daily_calories} color="calories" size={80} />
-          </div>
-        </div>
-
-
-        <div className="grid grid-cols-3 gap-4 mb-6">
-          <div className="bg-card rounded-2xl p-4 shadow-soft text-center">
-            <NutritionRing value={proteinLeft} max={goals.daily_protein} color="protein" size={50} />
-            <p className="font-bold mt-2">{Math.round(proteinLeft)}g</p>
-            <p className="text-xs text-muted-foreground">Protein left</p>
-          </div>
-          <div className="bg-card rounded-2xl p-4 shadow-soft text-center">
-            <NutritionRing value={carbsLeft} max={goals.daily_carbs} color="carbs" size={50} />
-            <p className="font-bold mt-2">{Math.round(carbsLeft)}g</p>
-            <p className="text-xs text-muted-foreground">Carbs left</p>
-          </div>
-          <div className="bg-card rounded-2xl p-4 shadow-soft text-center">
-            <NutritionRing value={fatsLeft} max={goals.daily_fats} color="fats" size={50} />
-            <p className="font-bold mt-2">{Math.round(fatsLeft)}g</p>
-            <p className="text-xs text-muted-foreground">Fat left</p>
-          </div>
-        </div>
-
-        {/* Activity Carousel - Steps, Calories Burned, Water */}
-        <ActivityCarousel selectedDate={selectedDate} onDataChange={fetchDashboardData} />
+        {/* Unified Swipeable Cards Carousel */}
+        <ActivityCarousel 
+          selectedDate={selectedDate} 
+          onDataChange={fetchDashboardData}
+          nutritionData={{
+            caloriesLeft,
+            proteinLeft,
+            carbsLeft,
+            fatsLeft,
+            goals
+          }}
+        />
 
         <div>
           <h3 className="font-semibold mb-4">
