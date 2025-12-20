@@ -2,13 +2,16 @@ import { useState } from 'react';
 import { FoodAnalysisResult } from '@/lib/api/food-analysis';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Flame, Wheat, Beef, Droplets, Heart, Minus, Plus, Pencil, Check } from 'lucide-react';
+import { Flame, Wheat, Beef, Droplets, Heart, Minus, Plus, Pencil, Check, Apple, Candy, Salad } from 'lucide-react';
 
 interface FoodResultSheetProps {
   result: FoodAnalysisResult;
   imageUrl: string;
   onClose: () => void;
-  onDone: (adjustedNutrition: { calories: number; carbs: number; protein: number; fats: number }) => void;
+  onDone: (adjustedNutrition: { 
+    calories: number; carbs: number; protein: number; fats: number;
+    fiber: number; sugar: number; sodium: number;
+  }) => void;
   onRetake: () => void;
 }
 
@@ -19,14 +22,20 @@ const FoodResultSheet = ({ result, imageUrl, onClose, onDone, onRetake }: FoodRe
     calories: result.totalNutrition.calories,
     carbs: result.totalNutrition.carbs,
     protein: result.totalNutrition.protein,
-    fats: result.totalNutrition.fats
+    fats: result.totalNutrition.fats,
+    fiber: result.totalNutrition.fiber || 0,
+    sugar: result.totalNutrition.sugar || 0,
+    sodium: result.totalNutrition.sodium || 0
   });
 
   const adjustedNutrition = {
     calories: Math.round(customValues.calories * servings),
     carbs: Math.round(customValues.carbs * servings),
     protein: Math.round(customValues.protein * servings),
-    fats: Math.round(customValues.fats * servings)
+    fats: Math.round(customValues.fats * servings),
+    fiber: Math.round(customValues.fiber * servings),
+    sugar: Math.round(customValues.sugar * servings),
+    sodium: Math.round(customValues.sodium * servings)
   };
 
   const handleEdit = (field: string) => {
@@ -203,6 +212,87 @@ const FoodResultSheet = ({ result, imageUrl, onClose, onDone, onRetake }: FoodRe
                 className="absolute bottom-2 right-2 text-muted-foreground hover:text-foreground"
               >
                 {editingField === 'fats' ? <Check className="w-4 h-4" /> : <Pencil className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          {/* Micronutrients Row */}
+          <div className="grid grid-cols-3 gap-2 mb-4">
+            <div className="flex items-center gap-2 p-3 bg-secondary/50 rounded-xl relative">
+              <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                <Apple className="w-4 h-4 text-purple-500" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-muted-foreground">Fiber</p>
+                {editingField === 'fiber' ? (
+                  <Input
+                    type="number"
+                    value={customValues.fiber}
+                    onChange={(e) => handleValueChange('fiber', e.target.value)}
+                    className="h-6 w-14 text-sm font-bold p-1"
+                    autoFocus
+                  />
+                ) : (
+                  <p className="text-sm font-bold text-foreground">{adjustedNutrition.fiber}g</p>
+                )}
+              </div>
+              <button
+                onClick={() => editingField === 'fiber' ? handleSave() : handleEdit('fiber')}
+                className="absolute bottom-1 right-1 text-muted-foreground hover:text-foreground"
+              >
+                {editingField === 'fiber' ? <Check className="w-3 h-3" /> : <Pencil className="w-3 h-3" />}
+              </button>
+            </div>
+            
+            <div className="flex items-center gap-2 p-3 bg-secondary/50 rounded-xl relative">
+              <div className="w-8 h-8 bg-pink-100 rounded-full flex items-center justify-center">
+                <Candy className="w-4 h-4 text-pink-500" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-muted-foreground">Sugar</p>
+                {editingField === 'sugar' ? (
+                  <Input
+                    type="number"
+                    value={customValues.sugar}
+                    onChange={(e) => handleValueChange('sugar', e.target.value)}
+                    className="h-6 w-14 text-sm font-bold p-1"
+                    autoFocus
+                  />
+                ) : (
+                  <p className="text-sm font-bold text-foreground">{adjustedNutrition.sugar}g</p>
+                )}
+              </div>
+              <button
+                onClick={() => editingField === 'sugar' ? handleSave() : handleEdit('sugar')}
+                className="absolute bottom-1 right-1 text-muted-foreground hover:text-foreground"
+              >
+                {editingField === 'sugar' ? <Check className="w-3 h-3" /> : <Pencil className="w-3 h-3" />}
+              </button>
+            </div>
+            
+            <div className="flex items-center gap-2 p-3 bg-secondary/50 rounded-xl relative">
+              <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center">
+                <Salad className="w-4 h-4 text-amber-600" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-muted-foreground">Sodium</p>
+                {editingField === 'sodium' ? (
+                  <Input
+                    type="number"
+                    value={customValues.sodium}
+                    onChange={(e) => handleValueChange('sodium', e.target.value)}
+                    className="h-6 w-14 text-sm font-bold p-1"
+                    autoFocus
+                  />
+                ) : (
+                  <p className="text-sm font-bold text-foreground">{adjustedNutrition.sodium}mg</p>
+                )}
+              </div>
+              <button
+                onClick={() => editingField === 'sodium' ? handleSave() : handleEdit('sodium')}
+                className="absolute bottom-1 right-1 text-muted-foreground hover:text-foreground"
+              >
+                {editingField === 'sodium' ? <Check className="w-3 h-3" /> : <Pencil className="w-3 h-3" />}
               </button>
             </div>
           </div>

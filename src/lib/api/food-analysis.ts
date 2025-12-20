@@ -15,6 +15,9 @@ export interface FoodAnalysisResult {
     carbs: number;
     protein: number;
     fats: number;
+    fiber?: number;
+    sugar?: number;
+    sodium?: number;
   };
   healthScore: number;
   servingSize: string;
@@ -50,6 +53,9 @@ export async function saveFoodEntry(
       carbs: analysis.totalNutrition.carbs,
       protein: analysis.totalNutrition.protein,
       fats: analysis.totalNutrition.fats,
+      fiber: analysis.totalNutrition.fiber || 0,
+      sugar: analysis.totalNutrition.sugar || 0,
+      sodium: analysis.totalNutrition.sodium || 0,
       serving_size: analysis.servingSize,
       meal_type: analysis.mealType,
       image_url: imageUrl,
