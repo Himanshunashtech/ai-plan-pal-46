@@ -25,6 +25,9 @@ interface DailyTotals {
   protein: number;
   carbs: number;
   fats: number;
+  fiber: number;
+  sugar: number;
+  sodium: number;
 }
 
 interface UserGoals {
@@ -32,6 +35,9 @@ interface UserGoals {
   daily_protein: number;
   daily_carbs: number;
   daily_fats: number;
+  daily_fiber: number;
+  daily_sugar: number;
+  daily_sodium: number;
 }
 
 const calculateHealthScore = (food: FoodEntry, goals: UserGoals): number => {
@@ -80,8 +86,13 @@ const Dashboard = () => {
   const location = useLocation();
   const { user } = useAuth();
   const [recentFoods, setRecentFoods] = useState<FoodEntry[]>([]);
-  const [dailyTotals, setDailyTotals] = useState<DailyTotals>({ calories: 0, protein: 0, carbs: 0, fats: 0 });
-  const [goals, setGoals] = useState<UserGoals>({ daily_calories: 2000, daily_protein: 150, daily_carbs: 200, daily_fats: 60 });
+  const [dailyTotals, setDailyTotals] = useState<DailyTotals>({ 
+    calories: 0, protein: 0, carbs: 0, fats: 0, fiber: 0, sugar: 0, sodium: 0 
+  });
+  const [goals, setGoals] = useState<UserGoals>({ 
+    daily_calories: 2000, daily_protein: 150, daily_carbs: 200, daily_fats: 60,
+    daily_fiber: 25, daily_sugar: 50, daily_sodium: 2300
+  });
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [weekOffset, setWeekOffset] = useState(0);
@@ -131,7 +142,7 @@ const Dashboard = () => {
 
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('daily_calories, daily_protein, daily_carbs, daily_fats')
+        .select('daily_calories, daily_protein, daily_carbs, daily_fats, daily_fiber, daily_sugar, daily_sodium')
         .eq('user_id', user.id)
         .maybeSingle();
 
@@ -143,8 +154,11 @@ const Dashboard = () => {
           calories: acc.calories + (food.calories || 0),
           protein: acc.protein + (food.protein || 0),
           carbs: acc.carbs + (food.carbs || 0),
-          fats: acc.fats + (food.fats || 0)
-        }), { calories: 0, protein: 0, carbs: 0, fats: 0 });
+          fats: acc.fats + (food.fats || 0),
+          fiber: acc.fiber + ((food as any).fiber || 0),
+          sugar: acc.sugar + ((food as any).sugar || 0),
+          sodium: acc.sodium + ((food as any).sodium || 0)
+        }), { calories: 0, protein: 0, carbs: 0, fats: 0, fiber: 0, sugar: 0, sodium: 0 });
         setDailyTotals(totals);
       }
 
@@ -153,7 +167,10 @@ const Dashboard = () => {
           daily_calories: profile.daily_calories || 2000,
           daily_protein: profile.daily_protein || 150,
           daily_carbs: profile.daily_carbs || 200,
-          daily_fats: profile.daily_fats || 60
+          daily_fats: profile.daily_fats || 60,
+          daily_fiber: (profile as any).daily_fiber || 25,
+          daily_sugar: (profile as any).daily_sugar || 50,
+          daily_sodium: (profile as any).daily_sodium || 2300
         });
       }
     } catch (error) {
@@ -167,6 +184,9 @@ const Dashboard = () => {
   const proteinLeft = Math.max(0, goals.daily_protein - dailyTotals.protein);
   const carbsLeft = Math.max(0, goals.daily_carbs - dailyTotals.carbs);
   const fatsLeft = Math.max(0, goals.daily_fats - dailyTotals.fats);
+  const fiberLeft = Math.max(0, goals.daily_fiber - dailyTotals.fiber);
+  const sugarLeft = Math.max(0, goals.daily_sugar - dailyTotals.sugar);
+  const sodiumLeft = Math.max(0, goals.daily_sodium - dailyTotals.sodium);
 
   return (
     <div className="min-h-screen bg-background flex flex-col safe-area-top safe-area-bottom">
@@ -241,6 +261,10 @@ const Dashboard = () => {
             proteinLeft,
             carbsLeft,
             fatsLeft,
+            fiberLeft,
+            sugarLeft,
+            sodiumLeft,
+            dailyTotals,
             goals
           }}
         />

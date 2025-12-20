@@ -25,7 +25,10 @@ export type Database = {
           total_calories: number | null
           total_carbs: number | null
           total_fats: number | null
+          total_fiber: number | null
           total_protein: number | null
+          total_sodium: number | null
+          total_sugar: number | null
           updated_at: string
           user_id: string
           water_intake: number | null
@@ -41,7 +44,10 @@ export type Database = {
           total_calories?: number | null
           total_carbs?: number | null
           total_fats?: number | null
+          total_fiber?: number | null
           total_protein?: number | null
+          total_sodium?: number | null
+          total_sugar?: number | null
           updated_at?: string
           user_id: string
           water_intake?: number | null
@@ -57,7 +63,10 @@ export type Database = {
           total_calories?: number | null
           total_carbs?: number | null
           total_fats?: number | null
+          total_fiber?: number | null
           total_protein?: number | null
+          total_sodium?: number | null
+          total_sugar?: number | null
           updated_at?: string
           user_id?: string
           water_intake?: number | null
@@ -72,6 +81,7 @@ export type Database = {
           carbs: number | null
           created_at: string
           fats: number | null
+          fiber: number | null
           id: string
           image_url: string | null
           logged_at: string
@@ -79,6 +89,8 @@ export type Database = {
           name: string
           protein: number | null
           serving_size: string | null
+          sodium: number | null
+          sugar: number | null
           user_id: string
         }
         Insert: {
@@ -87,6 +99,7 @@ export type Database = {
           carbs?: number | null
           created_at?: string
           fats?: number | null
+          fiber?: number | null
           id?: string
           image_url?: string | null
           logged_at?: string
@@ -94,6 +107,8 @@ export type Database = {
           name: string
           protein?: number | null
           serving_size?: string | null
+          sodium?: number | null
+          sugar?: number | null
           user_id: string
         }
         Update: {
@@ -102,6 +117,7 @@ export type Database = {
           carbs?: number | null
           created_at?: string
           fats?: number | null
+          fiber?: number | null
           id?: string
           image_url?: string | null
           logged_at?: string
@@ -109,6 +125,8 @@ export type Database = {
           name?: string
           protein?: number | null
           serving_size?: string | null
+          sodium?: number | null
+          sugar?: number | null
           user_id?: string
         }
         Relationships: []
@@ -125,7 +143,10 @@ export type Database = {
           daily_calories: number | null
           daily_carbs: number | null
           daily_fats: number | null
+          daily_fiber: number | null
           daily_protein: number | null
+          daily_sodium: number | null
+          daily_sugar: number | null
           diet_type: string | null
           exercise_frequency: number | null
           exercise_type: string[] | null
@@ -165,7 +186,10 @@ export type Database = {
           daily_calories?: number | null
           daily_carbs?: number | null
           daily_fats?: number | null
+          daily_fiber?: number | null
           daily_protein?: number | null
+          daily_sodium?: number | null
+          daily_sugar?: number | null
           diet_type?: string | null
           exercise_frequency?: number | null
           exercise_type?: string[] | null
@@ -205,7 +229,10 @@ export type Database = {
           daily_calories?: number | null
           daily_carbs?: number | null
           daily_fats?: number | null
+          daily_fiber?: number | null
           daily_protein?: number | null
+          daily_sodium?: number | null
+          daily_sugar?: number | null
           diet_type?: string | null
           exercise_frequency?: number | null
           exercise_type?: string[] | null
