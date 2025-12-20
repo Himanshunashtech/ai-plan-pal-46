@@ -4,8 +4,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Flame, Mail, Lock, Eye, EyeOff, Phone } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, Phone } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import alleAiLogo from '@/assets/alle-ai-logo.png';
 
 type AuthMode = 'login' | 'signup';
 
@@ -96,8 +97,8 @@ const Auth = () => {
       <div className="flex-1 flex flex-col px-6 py-8">
         {/* Header */}
         <div className="flex flex-col items-center mb-10 animate-fade-in">
-          <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center shadow-soft mb-4">
-            <Flame className="w-8 h-8 text-primary-foreground" />
+          <div className="w-16 h-16 rounded-2xl bg-background flex items-center justify-center mb-4">
+            <img src={alleAiLogo} alt="Alle AI Logo" className="w-14 h-14 object-contain" />
           </div>
           <h1 className="text-2xl font-bold text-foreground">
             {mode === 'login' ? 'Welcome Back!' : 'Create Account'}
