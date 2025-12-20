@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -19,23 +19,6 @@ interface UseHealthConnectReturn {
   disconnect: () => void;
 }
 
-// Dynamic import for the health connect plugin
-let HealthConnect: any = null;
-
-const loadHealthConnectPlugin = async () => {
-  if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android') {
-    try {
-      const module = await import('capacitor-health-connect');
-      HealthConnect = module.HealthConnect;
-      return true;
-    } catch (error) {
-      console.error('Failed to load Health Connect plugin:', error);
-      return false;
-    }
-  }
-  return false;
-};
-
 export const useHealthConnect = (): UseHealthConnectReturn => {
   const [isAvailable, setIsAvailable] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
@@ -45,28 +28,42 @@ export const useHealthConnect = (): UseHealthConnectReturn => {
     caloriesBurned: 0,
     lastSynced: null
   });
+  
+  // Store the plugin reference in a ref to avoid re-renders
+  const healthConnectRef = useRef<any>(null);
+  const isInitialized = useRef(false);
 
   // Check if Health Connect is available
   useEffect(() => {
     const checkAvailability = async () => {
-      const loaded = await loadHealthConnectPlugin();
-      if (loaded && HealthConnect) {
-        try {
-          const result = await HealthConnect.checkAvailability();
+      if (isInitialized.current) return;
+      isInitialized.current = true;
+      
+      // Only load on Android native platform
+      if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== 'android') {
+        return;
+      }
+
+      try {
+        const module = await import('capacitor-health-connect');
+        healthConnectRef.current = module.HealthConnect;
+        
+        if (healthConnectRef.current) {
+          const result = await healthConnectRef.current.checkAvailability();
           setIsAvailable(result.availability === 'Available');
           
           // Check if we already have permissions
           if (result.availability === 'Available') {
-            const permissions = await HealthConnect.checkHealthPermissions({
+            const permissions = await healthConnectRef.current.checkHealthPermissions({
               read: ['Steps', 'TotalCaloriesBurned'],
               write: []
             });
             setIsConnected(permissions.grantedPermissions?.length > 0);
           }
-        } catch (error) {
-          console.log('Health Connect not available:', error);
-          setIsAvailable(false);
         }
+      } catch (error) {
+        console.log('Health Connect not available:', error);
+        setIsAvailable(false);
       }
     };
     
@@ -74,6 +71,7 @@ export const useHealthConnect = (): UseHealthConnectReturn => {
   }, []);
 
   const requestPermissions = useCallback(async (): Promise<boolean> => {
+    const HealthConnect = healthConnectRef.current;
     if (!HealthConnect) {
       console.log('Health Connect plugin not loaded');
       return false;
@@ -96,11 +94,6 @@ export const useHealthConnect = (): UseHealthConnectReturn => {
 
       const granted = result.grantedPermissions?.length > 0;
       setIsConnected(granted);
-      
-      if (granted) {
-        // Sync data after getting permissions
-        await syncHealthData();
-      }
       
       return granted;
     } catch (error) {
@@ -175,6 +168,7 @@ export const useHealthConnect = (): UseHealthConnectReturn => {
   }, [loadHealthDataFromDb]);
 
   const syncHealthData = useCallback(async () => {
+    const HealthConnect = healthConnectRef.current;
     if (!HealthConnect || !isConnected) {
       return;
     }
