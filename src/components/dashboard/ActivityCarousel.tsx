@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Footprints, Flame, Droplet, Plus, Minus, Settings, Apple, Candy, Salad } from 'lucide-react';
+import { Footprints, Flame, Droplet, Plus, Minus, Settings } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import NutritionRing from '@/components/ui/NutritionRing';
@@ -282,28 +282,22 @@ const ActivityCarousel = ({ selectedDate, onDataChange, nutritionData }: Activit
       id: 'micros',
       render: (
         <div className="space-y-3">
-          {/* Fiber, Sugar, Sodium Cards */}
+          {/* Fiber, Sugar, Sodium Cards with Rings - matching protein/carbs/fats design */}
           <div className="grid grid-cols-3 gap-3">
-            <div className="bg-card rounded-2xl p-4 shadow-soft">
-              <p className="text-2xl font-bold">{Math.round(fiberLeft)}g</p>
-              <p className="text-sm text-muted-foreground">Fiber left</p>
-              <div className="mt-3 w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center mx-auto">
-                <Apple className="w-6 h-6 text-purple-500" />
-              </div>
+            <div className="bg-card rounded-2xl p-3 shadow-soft text-center">
+              <NutritionRing value={fiberLeft} max={goals.daily_fiber} color="fiber" size={44} />
+              <p className="font-bold mt-2 text-sm">{Math.round(fiberLeft)}g</p>
+              <p className="text-xs text-muted-foreground">Fiber</p>
             </div>
-            <div className="bg-card rounded-2xl p-4 shadow-soft">
-              <p className="text-2xl font-bold">{Math.round(sugarLeft)}g</p>
-              <p className="text-sm text-muted-foreground">Sugar left</p>
-              <div className="mt-3 w-12 h-12 bg-pink-100 dark:bg-pink-900/30 rounded-full flex items-center justify-center mx-auto">
-                <Candy className="w-6 h-6 text-pink-500" />
-              </div>
+            <div className="bg-card rounded-2xl p-3 shadow-soft text-center">
+              <NutritionRing value={sugarLeft} max={goals.daily_sugar} color="sugar" size={44} />
+              <p className="font-bold mt-2 text-sm">{Math.round(sugarLeft)}g</p>
+              <p className="text-xs text-muted-foreground">Sugar</p>
             </div>
-            <div className="bg-card rounded-2xl p-4 shadow-soft">
-              <p className="text-2xl font-bold">{Math.round(sodiumLeft)}mg</p>
-              <p className="text-sm text-muted-foreground">Sodium left</p>
-              <div className="mt-3 w-12 h-12 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center mx-auto">
-                <Salad className="w-6 h-6 text-amber-600" />
-              </div>
+            <div className="bg-card rounded-2xl p-3 shadow-soft text-center">
+              <NutritionRing value={sodiumLeft} max={goals.daily_sodium} color="sodium" size={44} />
+              <p className="font-bold mt-2 text-sm">{Math.round(sodiumLeft)}mg</p>
+              <p className="text-xs text-muted-foreground">Sodium</p>
             </div>
           </div>
           

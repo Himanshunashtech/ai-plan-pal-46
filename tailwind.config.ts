@@ -69,6 +69,9 @@ export default {
         carbs: "hsl(var(--carbs))",
         protein: "hsl(var(--protein))",
         fats: "hsl(var(--fats))",
+        fiber: "hsl(var(--fiber))",
+        sugar: "hsl(var(--sugar))",
+        sodium: "hsl(var(--sodium))",
       },
       borderRadius: {
         lg: "var(--radius)",
