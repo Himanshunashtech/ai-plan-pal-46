@@ -1,20 +1,40 @@
 import { useState, useEffect, useRef } from 'react';
-import { Footprints, Flame, Droplet, Plus, Minus, Settings } from 'lucide-react';
+import { Footprints, Flame, Droplet, Plus, Minus, Settings, Apple, Candy, Salad } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import NutritionRing from '@/components/ui/NutritionRing';
 import HealthConnectWidget from '@/components/dashboard/HealthConnectWidget';
+
+interface DailyTotals {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fats: number;
+  fiber: number;
+  sugar: number;
+  sodium: number;
+}
+
+interface UserGoals {
+  daily_calories: number;
+  daily_protein: number;
+  daily_carbs: number;
+  daily_fats: number;
+  daily_fiber: number;
+  daily_sugar: number;
+  daily_sodium: number;
+}
+
 interface NutritionData {
   caloriesLeft: number;
   proteinLeft: number;
   carbsLeft: number;
   fatsLeft: number;
-  goals: {
-    daily_calories: number;
-    daily_protein: number;
-    daily_carbs: number;
-    daily_fats: number;
-  };
+  fiberLeft: number;
+  sugarLeft: number;
+  sodiumLeft: number;
+  dailyTotals: DailyTotals;
+  goals: UserGoals;
 }
 
 interface ActivityCarouselProps {
@@ -170,7 +190,57 @@ const ActivityCarousel = ({ selectedDate, onDataChange, nutritionData }: Activit
   const waterCups = Math.floor(dailyLog.water_intake / cupsInMl);
   const waterOz = Math.round(dailyLog.water_intake * 0.033814);
 
-  const { caloriesLeft, proteinLeft, carbsLeft, fatsLeft, goals } = nutritionData;
+  const { caloriesLeft, proteinLeft, carbsLeft, fatsLeft, fiberLeft, sugarLeft, sodiumLeft, dailyTotals, goals } = nutritionData;
+
+  // Calculate health score (0-10) based on how well macros are balanced
+  const calculateOverallHealthScore = (): { score: number; message: string } => {
+    const caloriePercent = Math.min((dailyTotals.calories / goals.daily_calories) * 100, 100);
+    const proteinPercent = Math.min((dailyTotals.protein / goals.daily_protein) * 100, 100);
+    const carbsPercent = Math.min((dailyTotals.carbs / goals.daily_carbs) * 100, 100);
+    const fatsPercent = Math.min((dailyTotals.fats / goals.daily_fats) * 100, 100);
+    const fiberPercent = Math.min((dailyTotals.fiber / goals.daily_fiber) * 100, 100);
+    
+    // Score based on how close to goals (ideal is ~80-100%)
+    const getScore = (percent: number) => {
+      if (percent >= 80 && percent <= 100) return 10;
+      if (percent >= 60 && percent < 80) return 7;
+      if (percent >= 40 && percent < 60) return 5;
+      if (percent >= 20 && percent < 40) return 3;
+      return 1;
+    };
+    
+    const avgScore = Math.round(
+      (getScore(caloriePercent) + getScore(proteinPercent) + getScore(carbsPercent) + 
+       getScore(fatsPercent) + getScore(fiberPercent)) / 5
+    );
+    
+    // Generate message
+    let message = '';
+    const lowNutrients: string[] = [];
+    const goodNutrients: string[] = [];
+    
+    if (caloriePercent < 50) lowNutrients.push('calories');
+    else if (caloriePercent >= 70) goodNutrients.push('calories');
+    
+    if (proteinPercent < 50) lowNutrients.push('protein');
+    else if (proteinPercent >= 70) goodNutrients.push('protein');
+    
+    if (carbsPercent >= 70 && fatsPercent >= 70) {
+      message = 'Carbs and fat are on track.';
+    }
+    
+    if (lowNutrients.length > 0) {
+      message += ` You're low in ${lowNutrients.join(' and ')}, which can slow weight loss and impact muscle retention.`;
+    } else if (avgScore >= 8) {
+      message = 'Great job! Your nutrition is well balanced today.';
+    } else if (dailyTotals.calories === 0) {
+      message = 'Start logging meals to see your health score.';
+    }
+    
+    return { score: avgScore, message: message.trim() || 'Keep tracking to improve your score!' };
+  };
+
+  const healthScore = calculateOverallHealthScore();
 
   const slides = [
     // Slide 1: Calories and Macros
@@ -207,7 +277,56 @@ const ActivityCarousel = ({ selectedDate, onDataChange, nutritionData }: Activit
         </div>
       )
     },
-    // Slide 2: Steps and Calories Burned
+    // Slide 2: Fiber, Sugar, Sodium + Health Score
+    {
+      id: 'micros',
+      render: (
+        <div className="space-y-3">
+          {/* Fiber, Sugar, Sodium Cards */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="bg-card rounded-2xl p-4 shadow-soft">
+              <p className="text-2xl font-bold">{Math.round(fiberLeft)}g</p>
+              <p className="text-sm text-muted-foreground">Fiber left</p>
+              <div className="mt-3 w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center mx-auto">
+                <Apple className="w-6 h-6 text-purple-500" />
+              </div>
+            </div>
+            <div className="bg-card rounded-2xl p-4 shadow-soft">
+              <p className="text-2xl font-bold">{Math.round(sugarLeft)}g</p>
+              <p className="text-sm text-muted-foreground">Sugar left</p>
+              <div className="mt-3 w-12 h-12 bg-pink-100 dark:bg-pink-900/30 rounded-full flex items-center justify-center mx-auto">
+                <Candy className="w-6 h-6 text-pink-500" />
+              </div>
+            </div>
+            <div className="bg-card rounded-2xl p-4 shadow-soft">
+              <p className="text-2xl font-bold">{Math.round(sodiumLeft)}mg</p>
+              <p className="text-sm text-muted-foreground">Sodium left</p>
+              <div className="mt-3 w-12 h-12 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center mx-auto">
+                <Salad className="w-6 h-6 text-amber-600" />
+              </div>
+            </div>
+          </div>
+          
+          {/* Health Score Card */}
+          <div className="bg-card rounded-2xl p-5 shadow-soft">
+            <div className="flex items-center justify-between mb-3">
+              <p className="font-semibold text-lg">Health score</p>
+              <p className="text-lg font-bold">{healthScore.score}/10</p>
+            </div>
+            <div className="h-1.5 bg-secondary rounded-full mb-3">
+              <div 
+                className="h-full rounded-full bg-primary transition-all"
+                style={{ width: `${healthScore.score * 10}%` }}
+              />
+            </div>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              {healthScore.message}
+            </p>
+          </div>
+        </div>
+      )
+    },
+    // Slide 3: Steps and Calories Burned
     {
       id: 'activity',
       render: (
@@ -274,7 +393,7 @@ const ActivityCarousel = ({ selectedDate, onDataChange, nutritionData }: Activit
         </div>
       )
     },
-    // Slide 3: Water Intake
+    // Slide 4: Water Intake
     {
       id: 'water',
       render: (
