@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
-import { Footprints, Flame, Droplet, Plus, Minus, Settings } from 'lucide-react';
+import { Footprints, Flame, Droplet, Plus, Minus, Settings, RefreshCw, Link2, Check } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import NutritionRing from '@/components/ui/NutritionRing';
-
+import { useHealthConnect } from '@/hooks/useHealthConnect';
+import { toast } from 'sonner';
 interface NutritionData {
   caloriesLeft: number;
   proteinLeft: number;
@@ -32,6 +33,7 @@ interface DailyLog {
 
 const ActivityCarousel = ({ selectedDate, onDataChange, nutritionData }: ActivityCarouselProps) => {
   const { user } = useAuth();
+  const { isAvailable, isConnected, isLoading: healthLoading, healthData, requestPermissions, syncHealthData } = useHealthConnect();
   const [currentSlide, setCurrentSlide] = useState(0);
   const [dailyLog, setDailyLog] = useState<DailyLog>({
     steps: 0,
@@ -47,6 +49,17 @@ const ActivityCarousel = ({ selectedDate, onDataChange, nutritionData }: Activit
   const waterGoalCups = 8;
   const cupsInMl = 250;
   const minSwipeDistance = 50;
+
+  // Sync health data when connected and update daily log
+  useEffect(() => {
+    if (isConnected && healthData.steps > 0) {
+      setDailyLog(prev => ({
+        ...prev,
+        steps: healthData.steps,
+        calories_burned: healthData.caloriesBurned
+      }));
+    }
+  }, [isConnected, healthData]);
 
   useEffect(() => {
     if (user) {
@@ -216,19 +229,62 @@ const ActivityCarousel = ({ selectedDate, onDataChange, nutritionData }: Activit
               </div>
             </div>
             
-            {/* Progress arc placeholder */}
+            {/* Progress arc */}
             <div className="flex-1 flex items-center justify-center my-2">
-              <div className="w-16 h-8 border-t-4 border-l-4 border-r-4 border-muted rounded-t-full" />
+              <div 
+                className="w-16 h-8 border-t-4 border-l-4 border-r-4 rounded-t-full transition-colors"
+                style={{
+                  borderColor: isConnected ? 'hsl(var(--primary))' : 'hsl(var(--muted))'
+                }}
+              />
             </div>
 
-            <div className="bg-muted/50 rounded-xl p-3 mt-auto">
+            {/* Health Connect Button */}
+            <div 
+              className={`rounded-xl p-3 mt-auto cursor-pointer transition-all ${
+                isConnected 
+                  ? 'bg-green-100 dark:bg-green-900/30' 
+                  : 'bg-muted/50 hover:bg-muted'
+              }`}
+              onClick={async () => {
+                if (isConnected) {
+                  await syncHealthData();
+                  toast.success('Health data synced!');
+                } else {
+                  const granted = await requestPermissions();
+                  if (granted) {
+                    toast.success('Connected to Health Connect!');
+                  } else {
+                    toast.error('Failed to connect. Make sure Health Connect is installed.');
+                  }
+                }
+              }}
+            >
               <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-green-400 via-blue-400 to-yellow-400 flex items-center justify-center flex-shrink-0">
-                  <span className="text-white text-xs font-bold">❤</span>
+                <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                  isConnected 
+                    ? 'bg-green-500' 
+                    : 'bg-gradient-to-br from-green-400 via-blue-400 to-yellow-400'
+                }`}>
+                  {healthLoading ? (
+                    <RefreshCw className="w-4 h-4 text-white animate-spin" />
+                  ) : isConnected ? (
+                    <Check className="w-4 h-4 text-white" />
+                  ) : (
+                    <Link2 className="w-4 h-4 text-white" />
+                  )}
                 </div>
                 <div className="text-xs leading-tight">
-                  <p className="font-medium">Connect Google Health</p>
-                  <p className="text-muted-foreground">to track your steps</p>
+                  <p className="font-medium">
+                    {isConnected ? 'Tap to sync' : 'Connect Health'}
+                  </p>
+                  <p className="text-muted-foreground">
+                    {isConnected 
+                      ? healthData.lastSynced 
+                        ? `Updated ${new Date(healthData.lastSynced).toLocaleTimeString()}`
+                        : 'Connected'
+                      : 'to track steps'}
+                  </p>
                 </div>
               </div>
             </div>
