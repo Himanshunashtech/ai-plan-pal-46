@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Home, BarChart3, Scan, User } from 'lucide-react';
+import { Home, BarChart3, Scan, User, ChevronLeft, ChevronRight, TrendingUp, TrendingDown } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import NutritionRing from '@/components/ui/NutritionRing';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { format, startOfDay, endOfDay, subDays, isSameDay } from 'date-fns';
+import { format, startOfDay, endOfDay, subDays, addDays, isSameDay, startOfWeek, endOfWeek } from 'date-fns';
+import { useSwipe } from '@/hooks/useSwipe';
 
 interface FoodEntry {
   id: string;
@@ -32,24 +33,53 @@ interface UserGoals {
   daily_fats: number;
 }
 
+interface WeeklyAverage {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fats: number;
+}
+
 const Dashboard = () => {
   const location = useLocation();
   const { user } = useAuth();
   const [recentFoods, setRecentFoods] = useState<FoodEntry[]>([]);
   const [dailyTotals, setDailyTotals] = useState<DailyTotals>({ calories: 0, protein: 0, carbs: 0, fats: 0 });
+  const [weeklyAverage, setWeeklyAverage] = useState<WeeklyAverage>({ calories: 0, protein: 0, carbs: 0, fats: 0 });
   const [goals, setGoals] = useState<UserGoals>({ daily_calories: 2000, daily_protein: 150, daily_carbs: 200, daily_fats: 60 });
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [weekOffset, setWeekOffset] = useState(0);
 
   const today = new Date();
-  const weekDates = Array.from({ length: 7 }, (_, i) => subDays(today, 6 - i));
+  const weekStart = subDays(today, 6 + weekOffset * 7);
+  const weekDates = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   const dayNames = weekDates.map(d => format(d, 'EEEEE'));
+
+  const navigateWeek = (direction: 'prev' | 'next') => {
+    if (direction === 'prev') {
+      setWeekOffset(prev => prev + 1);
+    } else if (direction === 'next' && weekOffset > 0) {
+      setWeekOffset(prev => prev - 1);
+    }
+  };
+
+  const swipeHandlers = useSwipe({
+    onSwipeLeft: () => navigateWeek('prev'),
+    onSwipeRight: () => navigateWeek('next'),
+  });
 
   useEffect(() => {
     if (user) {
       fetchDashboardData();
     }
   }, [user, selectedDate]);
+
+  useEffect(() => {
+    if (user) {
+      fetchWeeklyAverage();
+    }
+  }, [user, weekOffset]);
 
   const fetchDashboardData = async () => {
     if (!user) return;
@@ -59,7 +89,6 @@ const Dashboard = () => {
       const dayStart = startOfDay(selectedDate).toISOString();
       const dayEnd = endOfDay(selectedDate).toISOString();
 
-      // Fetch selected day's food entries
       const { data: foods, error: foodsError } = await supabase
         .from('food_entries')
         .select('*')
@@ -70,26 +99,22 @@ const Dashboard = () => {
 
       if (foodsError) throw foodsError;
 
-      // Fetch user profile for goals
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('daily_calories, daily_protein, daily_carbs, daily_fats')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
-      if (profileError && profileError.code !== 'PGRST116') throw profileError;
+      if (profileError) throw profileError;
 
       if (foods) {
         setRecentFoods(foods);
-        
-        // Calculate daily totals
         const totals = foods.reduce((acc, food) => ({
           calories: acc.calories + (food.calories || 0),
           protein: acc.protein + (food.protein || 0),
           carbs: acc.carbs + (food.carbs || 0),
           fats: acc.fats + (food.fats || 0)
         }), { calories: 0, protein: 0, carbs: 0, fats: 0 });
-        
         setDailyTotals(totals);
       }
 
@@ -108,14 +133,72 @@ const Dashboard = () => {
     }
   };
 
+  const fetchWeeklyAverage = async () => {
+    if (!user) return;
+    
+    try {
+      const weekStartDate = startOfDay(weekDates[0]).toISOString();
+      const weekEndDate = endOfDay(weekDates[6]).toISOString();
+
+      const { data: foods, error } = await supabase
+        .from('food_entries')
+        .select('calories, protein, carbs, fats, logged_at')
+        .eq('user_id', user.id)
+        .gte('logged_at', weekStartDate)
+        .lte('logged_at', weekEndDate);
+
+      if (error) throw error;
+
+      if (foods && foods.length > 0) {
+        const dailyData: { [key: string]: DailyTotals } = {};
+        
+        foods.forEach(food => {
+          const day = format(new Date(food.logged_at), 'yyyy-MM-dd');
+          if (!dailyData[day]) {
+            dailyData[day] = { calories: 0, protein: 0, carbs: 0, fats: 0 };
+          }
+          dailyData[day].calories += food.calories || 0;
+          dailyData[day].protein += food.protein || 0;
+          dailyData[day].carbs += food.carbs || 0;
+          dailyData[day].fats += food.fats || 0;
+        });
+
+        const daysWithData = Object.keys(dailyData).length;
+        const totals = Object.values(dailyData).reduce((acc, day) => ({
+          calories: acc.calories + day.calories,
+          protein: acc.protein + day.protein,
+          carbs: acc.carbs + day.carbs,
+          fats: acc.fats + day.fats
+        }), { calories: 0, protein: 0, carbs: 0, fats: 0 });
+
+        setWeeklyAverage({
+          calories: Math.round(totals.calories / daysWithData),
+          protein: Math.round(totals.protein / daysWithData),
+          carbs: Math.round(totals.carbs / daysWithData),
+          fats: Math.round(totals.fats / daysWithData)
+        });
+      } else {
+        setWeeklyAverage({ calories: 0, protein: 0, carbs: 0, fats: 0 });
+      }
+    } catch (error) {
+      console.error('Error fetching weekly average:', error);
+    }
+  };
+
   const caloriesLeft = Math.max(0, goals.daily_calories - dailyTotals.calories);
   const proteinLeft = Math.max(0, goals.daily_protein - dailyTotals.protein);
   const carbsLeft = Math.max(0, goals.daily_carbs - dailyTotals.carbs);
   const fatsLeft = Math.max(0, goals.daily_fats - dailyTotals.fats);
 
+  const caloriesDiff = dailyTotals.calories - weeklyAverage.calories;
+  const isAboveAverage = caloriesDiff > 0;
+
   return (
     <div className="min-h-screen bg-background flex flex-col safe-area-top safe-area-bottom">
-      <div className="flex-1 px-6 py-6 pb-24 overflow-auto">
+      <div 
+        className="flex-1 px-6 py-6 pb-24 overflow-auto"
+        {...swipeHandlers}
+      >
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
             <span className="text-xl">🔥</span>
@@ -127,15 +210,37 @@ const Dashboard = () => {
           </div>
         </div>
 
+        {/* Week Navigation */}
+        <div className="flex items-center justify-between mb-4">
+          <button 
+            onClick={() => navigateWeek('prev')}
+            className="p-2 rounded-full bg-secondary"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <span className="text-sm font-medium text-muted-foreground">
+            {format(weekDates[0], 'MMM d')} - {format(weekDates[6], 'MMM d, yyyy')}
+          </span>
+          <button 
+            onClick={() => navigateWeek('next')}
+            className={`p-2 rounded-full bg-secondary ${weekOffset === 0 ? 'opacity-50' : ''}`}
+            disabled={weekOffset === 0}
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+
         <div className="flex justify-between mb-8">
           {weekDates.map((date, i) => {
             const isSelected = isSameDay(date, selectedDate);
             const isToday = isSameDay(date, today);
+            const isFuture = date > today;
             return (
               <button
                 key={i}
-                onClick={() => setSelectedDate(date)}
-                className="flex flex-col items-center"
+                onClick={() => !isFuture && setSelectedDate(date)}
+                className={`flex flex-col items-center ${isFuture ? 'opacity-40' : ''}`}
+                disabled={isFuture}
               >
                 <span className="text-xs text-muted-foreground mb-1">{dayNames[i]}</span>
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
@@ -162,6 +267,32 @@ const Dashboard = () => {
           </div>
         </div>
 
+        {/* Weekly Comparison */}
+        {weeklyAverage.calories > 0 && (
+          <div className="bg-card rounded-2xl p-4 shadow-soft mb-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">vs Weekly Average</p>
+                <p className="text-lg font-semibold">
+                  {dailyTotals.calories} / {weeklyAverage.calories} cal
+                </p>
+              </div>
+              <div className={`flex items-center gap-1 px-3 py-1 rounded-full ${
+                isAboveAverage ? 'bg-orange-100 text-orange-600' : 'bg-green-100 text-green-600'
+              }`}>
+                {isAboveAverage ? (
+                  <TrendingUp className="w-4 h-4" />
+                ) : (
+                  <TrendingDown className="w-4 h-4" />
+                )}
+                <span className="text-sm font-medium">
+                  {Math.abs(caloriesDiff)} cal
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-3 gap-4 mb-8">
           <div className="bg-card rounded-2xl p-4 shadow-soft text-center">
             <NutritionRing value={proteinLeft} max={goals.daily_protein} color="protein" size={50} />
@@ -181,16 +312,18 @@ const Dashboard = () => {
         </div>
 
         <div>
-          <h3 className="font-semibold mb-4">Recently logged</h3>
+          <h3 className="font-semibold mb-4">
+            {isSameDay(selectedDate, today) ? 'Recently logged' : format(selectedDate, 'EEEE, MMM d')}
+          </h3>
           {loading ? (
             <div className="bg-card rounded-2xl p-6 shadow-soft text-center">
               <p className="text-muted-foreground">Loading...</p>
             </div>
           ) : recentFoods.length === 0 ? (
             <div className="bg-card rounded-2xl p-6 shadow-soft text-center">
-              <p className="text-muted-foreground">You haven't uploaded any food</p>
+              <p className="text-muted-foreground">No food logged for this day</p>
               <p className="text-sm text-muted-foreground mt-1">
-                Start tracking today's meals by taking a quick picture.
+                Start tracking meals by taking a quick picture.
               </p>
             </div>
           ) : (
