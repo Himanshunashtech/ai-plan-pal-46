@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react';
-import { Home, BarChart3, Scan, User, TrendingUp, TrendingDown, Flame, Beef, Wheat, Droplets } from 'lucide-react';
+import { Home, BarChart3, Scan, User, TrendingUp, TrendingDown, Flame, Beef, Wheat, Droplets, Flag, Pencil } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { format, subDays, startOfDay, endOfDay } from 'date-fns';
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
+import { format, subDays, startOfDay, endOfDay, startOfWeek } from 'date-fns';
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, LineChart, Line } from 'recharts';
+import WeightCard from '@/components/progress/WeightCard';
+import DayStreakCard from '@/components/progress/DayStreakCard';
+import BMICard from '@/components/progress/BMICard';
 
 interface DailyData {
   date: string;
@@ -15,7 +18,12 @@ interface DailyData {
   fats: number;
 }
 
-interface UserGoals {
+interface UserProfile {
+  current_weight: number | null;
+  target_weight: number | null;
+  weight_unit: string | null;
+  height: number | null;
+  height_unit: string | null;
   daily_calories: number;
   daily_protein: number;
   daily_carbs: number;
@@ -25,15 +33,28 @@ interface UserGoals {
 const Progress = () => {
   const location = useLocation();
   const { user } = useAuth();
-  const [selectedPeriod, setSelectedPeriod] = useState<'7' | '30' | '90'>('7');
+  const [selectedPeriod, setSelectedPeriod] = useState<'90' | '180' | '365' | 'all'>('all');
   const [dailyData, setDailyData] = useState<DailyData[]>([]);
-  const [goals, setGoals] = useState<UserGoals>({ daily_calories: 2000, daily_protein: 150, daily_carbs: 200, daily_fats: 60 });
+  const [profile, setProfile] = useState<UserProfile>({
+    current_weight: 0,
+    target_weight: 0,
+    weight_unit: 'lb',
+    height: 0,
+    height_unit: 'cm',
+    daily_calories: 2000,
+    daily_protein: 150,
+    daily_carbs: 200,
+    daily_fats: 60
+  });
+  const [trackedDays, setTrackedDays] = useState<Date[]>([]);
+  const [streakDays, setStreakDays] = useState(0);
   const [loading, setLoading] = useState(true);
 
   const tabs = [
-    { id: '7' as const, label: '7 Days' },
-    { id: '30' as const, label: '30 Days' },
     { id: '90' as const, label: '90 Days' },
+    { id: '180' as const, label: '6 Months' },
+    { id: '365' as const, label: '1 Year' },
+    { id: 'all' as const, label: 'All time' },
   ];
 
   useEffect(() => {
@@ -47,7 +68,7 @@ const Progress = () => {
     
     setLoading(true);
     try {
-      const days = parseInt(selectedPeriod);
+      const days = selectedPeriod === 'all' ? 365 : parseInt(selectedPeriod);
       const startDate = startOfDay(subDays(new Date(), days - 1)).toISOString();
       const endDate = endOfDay(new Date()).toISOString();
 
@@ -61,33 +82,40 @@ const Progress = () => {
 
       if (foodsError) throw foodsError;
 
-      const { data: profile, error: profileError } = await supabase
+      const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .select('daily_calories, daily_protein, daily_carbs, daily_fats')
+        .select('daily_calories, daily_protein, daily_carbs, daily_fats, current_weight, target_weight, weight_unit, height, height_unit')
         .eq('user_id', user.id)
         .maybeSingle();
 
       if (profileError) throw profileError;
 
-      if (profile) {
-        setGoals({
-          daily_calories: profile.daily_calories || 2000,
-          daily_protein: profile.daily_protein || 150,
-          daily_carbs: profile.daily_carbs || 200,
-          daily_fats: profile.daily_fats || 60
+      if (profileData) {
+        setProfile({
+          current_weight: profileData.current_weight || 0,
+          target_weight: profileData.target_weight || 0,
+          weight_unit: profileData.weight_unit || 'lb',
+          height: profileData.height || 0,
+          height_unit: profileData.height_unit || 'cm',
+          daily_calories: profileData.daily_calories || 2000,
+          daily_protein: profileData.daily_protein || 150,
+          daily_carbs: profileData.daily_carbs || 200,
+          daily_fats: profileData.daily_fats || 60
         });
       }
 
       // Group by day
       const dailyMap: { [key: string]: DailyData } = {};
+      const trackedDates: Date[] = [];
       
-      // Initialize all days
-      for (let i = 0; i < days; i++) {
-        const date = subDays(new Date(), days - 1 - i);
+      // Initialize days based on period
+      const displayDays = Math.min(days, 7);
+      for (let i = 0; i < displayDays; i++) {
+        const date = subDays(new Date(), displayDays - 1 - i);
         const key = format(date, 'yyyy-MM-dd');
         dailyMap[key] = {
           date: key,
-          day: format(date, days <= 7 ? 'EEE' : 'MMM d'),
+          day: format(date, 'EEE'),
           calories: 0,
           protein: 0,
           carbs: 0,
@@ -97,7 +125,13 @@ const Progress = () => {
 
       // Fill in actual data
       foods?.forEach(food => {
-        const key = format(new Date(food.logged_at), 'yyyy-MM-dd');
+        const foodDate = new Date(food.logged_at);
+        const key = format(foodDate, 'yyyy-MM-dd');
+        
+        if (!trackedDates.some(d => format(d, 'yyyy-MM-dd') === key)) {
+          trackedDates.push(foodDate);
+        }
+        
         if (dailyMap[key]) {
           dailyMap[key].calories += food.calories || 0;
           dailyMap[key].protein += food.protein || 0;
@@ -106,7 +140,11 @@ const Progress = () => {
         }
       });
 
+      setTrackedDays(trackedDates);
       setDailyData(Object.values(dailyMap));
+      
+      // Calculate streak
+      calculateStreak(trackedDates);
     } catch (error) {
       console.error('Error fetching progress data:', error);
     } finally {
@@ -114,8 +152,54 @@ const Progress = () => {
     }
   };
 
-  // Calculate totals and averages
-  const daysWithData = dailyData.filter(d => d.calories > 0).length;
+  const calculateStreak = (dates: Date[]) => {
+    if (dates.length === 0) {
+      setStreakDays(0);
+      return;
+    }
+
+    const sortedDates = [...dates]
+      .map(d => format(new Date(d), 'yyyy-MM-dd'))
+      .filter((v, i, a) => a.indexOf(v) === i)
+      .sort()
+      .reverse();
+
+    let streak = 0;
+    const today = format(new Date(), 'yyyy-MM-dd');
+    
+    for (let i = 0; i < sortedDates.length; i++) {
+      const expectedDate = format(subDays(new Date(), i), 'yyyy-MM-dd');
+      if (sortedDates.includes(expectedDate)) {
+        streak++;
+      } else {
+        break;
+      }
+    }
+    
+    setStreakDays(streak);
+  };
+
+  // Calculate BMI
+  const calculateBMI = () => {
+    if (!profile.current_weight || !profile.height) return 0;
+    
+    let weightKg = profile.current_weight;
+    let heightM = profile.height / 100;
+    
+    if (profile.weight_unit === 'lb') {
+      weightKg = profile.current_weight * 0.453592;
+    }
+    
+    if (profile.height_unit === 'ft') {
+      heightM = profile.height * 0.3048;
+    }
+    
+    return weightKg / (heightM * heightM);
+  };
+
+  const bmi = calculateBMI();
+  
+  // Calculate totals
   const totals = dailyData.reduce((acc, d) => ({
     calories: acc.calories + d.calories,
     protein: acc.protein + d.protein,
@@ -123,36 +207,27 @@ const Progress = () => {
     fats: acc.fats + d.fats
   }), { calories: 0, protein: 0, carbs: 0, fats: 0 });
 
-  const averages = {
-    calories: daysWithData > 0 ? Math.round(totals.calories / daysWithData) : 0,
-    protein: daysWithData > 0 ? Math.round(totals.protein / daysWithData) : 0,
-    carbs: daysWithData > 0 ? Math.round(totals.carbs / daysWithData) : 0,
-    fats: daysWithData > 0 ? Math.round(totals.fats / daysWithData) : 0
-  };
-
-  const goalAchievement = goals.daily_calories > 0 
-    ? Math.round((averages.calories / goals.daily_calories) * 100) 
+  // Goal progress
+  const weightProgress = profile.target_weight && profile.current_weight
+    ? Math.round(((profile.target_weight - profile.current_weight) / profile.target_weight) * 100)
     : 0;
-
-  const macroData = [
-    { name: 'Protein', value: totals.protein, color: '#ef4444' },
-    { name: 'Carbs', value: totals.carbs, color: '#f59e0b' },
-    { name: 'Fats', value: totals.fats, color: '#3b82f6' },
-  ];
-
-  const caloriesTrend = averages.calories - goals.daily_calories;
-  const isOverGoal = caloriesTrend > 0;
 
   return (
     <div className="min-h-screen bg-background flex flex-col safe-area-top safe-area-bottom">
-      <div className="flex-1 px-6 py-6 pb-24 overflow-auto">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-xl font-bold">Analytics</h1>
-          <div className={`flex items-center gap-1 px-3 py-1 rounded-full ${
-            goalAchievement >= 80 && goalAchievement <= 120 ? 'bg-green-100 text-green-600' : 'bg-orange-100 text-orange-600'
-          }`}>
-            <span className="text-sm font-medium">{goalAchievement}% of goal</span>
-          </div>
+      <div className="flex-1 px-5 py-6 pb-24 overflow-auto">
+        <h1 className="text-2xl font-bold mb-6">Progress</h1>
+
+        {/* Weight & Streak Cards */}
+        <div className="flex gap-3 mb-6">
+          <WeightCard
+            currentWeight={profile.current_weight || 0}
+            targetWeight={profile.target_weight || 0}
+            weightUnit={profile.weight_unit || 'lb'}
+          />
+          <DayStreakCard
+            streakDays={streakDays}
+            trackedDays={trackedDays}
+          />
         </div>
 
         {/* Period Tabs */}
@@ -163,8 +238,8 @@ const Progress = () => {
               onClick={() => setSelectedPeriod(tab.id)}
               className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
                 selectedPeriod === tab.id 
-                  ? 'bg-primary text-primary-foreground' 
-                  : 'bg-secondary text-secondary-foreground'
+                  ? 'bg-foreground text-background' 
+                  : 'bg-transparent text-foreground'
               }`}
             >
               {tab.label}
@@ -174,46 +249,22 @@ const Progress = () => {
 
         {loading ? (
           <div className="bg-card rounded-2xl p-6 shadow-soft text-center">
-            <p className="text-muted-foreground">Loading analytics...</p>
+            <p className="text-muted-foreground">Loading progress...</p>
           </div>
         ) : (
           <>
-            {/* Calories Chart */}
-            <div className="bg-card rounded-2xl p-4 shadow-soft mb-6">
+            {/* Goal Progress Card */}
+            <div className="bg-card rounded-2xl p-5 shadow-soft mb-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold flex items-center gap-2">
-                  <Flame className="w-5 h-5 text-orange-500" />
-                  Calories Trend
-                </h3>
-                <div className={`flex items-center gap-1 text-sm ${isOverGoal ? 'text-orange-500' : 'text-green-500'}`}>
-                  {isOverGoal ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                  <span>{Math.abs(caloriesTrend)} avg/day</span>
+                <h3 className="font-semibold text-lg">Goal Progress</h3>
+                <div className="flex items-center gap-2 bg-secondary px-3 py-1.5 rounded-full">
+                  <Flag className="w-4 h-4" />
+                  <span className="text-sm font-medium">{Math.abs(weightProgress)}% of goal</span>
+                  <Pencil className="w-3 h-3 text-muted-foreground" />
                 </div>
               </div>
-              <div className="h-48">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={dailyData}>
-                    <XAxis 
-                      dataKey="day" 
-                      axisLine={false} 
-                      tickLine={false}
-                      tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-                      interval={selectedPeriod === '7' ? 0 : 'preserveStartEnd'}
-                    />
-                    <YAxis hide />
-                    <Bar 
-                      dataKey="calories" 
-                      fill="hsl(var(--primary))" 
-                      radius={[4, 4, 0, 0]}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
 
-            {/* Macros Line Chart */}
-            <div className="bg-card rounded-2xl p-4 shadow-soft mb-6">
-              <h3 className="font-semibold mb-4">Macros Over Time</h3>
+              {/* Weight Progress Chart */}
               <div className="h-48">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={dailyData}>
@@ -221,147 +272,99 @@ const Progress = () => {
                       dataKey="day" 
                       axisLine={false} 
                       tickLine={false}
-                      tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-                      interval={selectedPeriod === '7' ? 0 : 'preserveStartEnd'}
+                      tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
                     />
-                    <YAxis hide />
-                    <Line type="monotone" dataKey="protein" stroke="#ef4444" strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="carbs" stroke="#f59e0b" strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="fats" stroke="#3b82f6" strokeWidth={2} dot={false} />
+                    <YAxis 
+                      domain={['auto', 'auto']}
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                      tickFormatter={(val) => `${val}`}
+                      width={40}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="calories" 
+                      stroke="hsl(var(--foreground))" 
+                      strokeWidth={2} 
+                      dot={false}
+                    />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
-              <div className="flex justify-center gap-6 mt-2">
-                <div className="flex items-center gap-1">
-                  <div className="w-3 h-3 rounded-full bg-red-500" />
-                  <span className="text-xs text-muted-foreground">Protein</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <div className="w-3 h-3 rounded-full bg-amber-500" />
-                  <span className="text-xs text-muted-foreground">Carbs</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <div className="w-3 h-3 rounded-full bg-blue-500" />
-                  <span className="text-xs text-muted-foreground">Fats</span>
-                </div>
-              </div>
             </div>
 
-            {/* Macro Distribution Pie */}
-            <div className="bg-card rounded-2xl p-4 shadow-soft mb-6">
-              <h3 className="font-semibold mb-4">Macro Distribution</h3>
-              <div className="flex items-center">
-                <div className="w-32 h-32">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={macroData}
-                        innerRadius={35}
-                        outerRadius={55}
-                        paddingAngle={2}
-                        dataKey="value"
-                      >
-                        {macroData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="flex-1 space-y-3 ml-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Beef className="w-4 h-4 text-red-500" />
-                      <span className="text-sm">Protein</span>
-                    </div>
-                    <span className="font-semibold">{totals.protein}g</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Wheat className="w-4 h-4 text-amber-500" />
-                      <span className="text-sm">Carbs</span>
-                    </div>
-                    <span className="font-semibold">{totals.carbs}g</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Droplets className="w-4 h-4 text-blue-500" />
-                      <span className="text-sm">Fats</span>
-                    </div>
-                    <span className="font-semibold">{totals.fats}g</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* vs Weekly Average Card */}
-            <div className="bg-card rounded-2xl p-4 shadow-soft mb-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Today vs {selectedPeriod} Day Average</p>
-                  <p className="text-lg font-semibold">
-                    {dailyData[dailyData.length - 1]?.calories || 0} / {averages.calories} cal
-                  </p>
-                </div>
-                <div className={`flex items-center gap-1 px-3 py-1 rounded-full ${
-                  (dailyData[dailyData.length - 1]?.calories || 0) > averages.calories 
-                    ? 'bg-orange-100 text-orange-600' 
-                    : 'bg-green-100 text-green-600'
-                }`}>
-                  {(dailyData[dailyData.length - 1]?.calories || 0) > averages.calories ? (
-                    <TrendingUp className="w-4 h-4" />
-                  ) : (
-                    <TrendingDown className="w-4 h-4" />
-                  )}
-                  <span className="text-sm font-medium">
-                    {Math.abs((dailyData[dailyData.length - 1]?.calories || 0) - averages.calories)} cal
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Stats Summary */}
-            <div>
-              <h3 className="font-semibold mb-4">Summary</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-card rounded-2xl p-4 shadow-soft">
-                  <p className="text-sm text-muted-foreground">Total Calories</p>
-                  <p className="text-2xl font-bold">{totals.calories.toLocaleString()}</p>
-                </div>
-                <div className="bg-card rounded-2xl p-4 shadow-soft">
-                  <p className="text-sm text-muted-foreground">Daily Average</p>
-                  <p className="text-2xl font-bold">{averages.calories.toLocaleString()}</p>
-                </div>
-                <div className="bg-card rounded-2xl p-4 shadow-soft">
-                  <p className="text-sm text-muted-foreground">Days Tracked</p>
-                  <p className="text-2xl font-bold">{daysWithData}</p>
-                </div>
-                <div className="bg-card rounded-2xl p-4 shadow-soft">
-                  <p className="text-sm text-muted-foreground">Goal Target</p>
-                  <p className="text-2xl font-bold">{goals.daily_calories.toLocaleString()}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Motivation Message */}
-            {daysWithData > 0 && (
-              <p className="text-center text-sm mt-6 p-4 bg-secondary/50 rounded-2xl">
-                {goalAchievement >= 80 && goalAchievement <= 120 
-                  ? "🎉 Great job! You're hitting your calorie goals consistently!"
-                  : goalAchievement < 80
-                    ? "💪 Keep going! Try to get closer to your daily calorie goal."
-                    : "⚡ You're eating above your goal. Consider adjusting portions."}
+            {/* Total Calories Card */}
+            <div className="bg-card rounded-2xl p-5 shadow-soft mb-6">
+              <h3 className="font-semibold text-lg mb-1">Total calories</h3>
+              <p className="text-4xl font-bold mb-4">
+                {totals.calories.toFixed(1)} <span className="text-lg font-normal text-muted-foreground">cals</span>
               </p>
-            )}
+
+              <div className="h-40">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={dailyData}>
+                    <XAxis 
+                      dataKey="day" 
+                      axisLine={false} 
+                      tickLine={false}
+                      tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                    />
+                    <YAxis 
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                      width={30}
+                    />
+                    <Bar 
+                      dataKey="calories" 
+                      fill="hsl(var(--foreground))" 
+                      radius={[4, 4, 0, 0]}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Macro Legend */}
+              <div className="flex justify-center gap-6 mt-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">🍖</span>
+                  <span className="text-sm text-muted-foreground">Protein</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">🌾</span>
+                  <span className="text-sm text-muted-foreground">Carbs</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">🫒</span>
+                  <span className="text-sm text-muted-foreground">Fats</span>
+                </div>
+              </div>
+
+              {/* Motivation Message */}
+              <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-3 mt-4">
+                <p className="text-green-700 dark:text-green-400 text-sm text-center">
+                  Starting is the hardest part. You're ready for this!
+                </p>
+              </div>
+            </div>
+
+            {/* BMI Card */}
+            <BMICard bmi={bmi} />
           </>
         )}
       </div>
+
+      {/* FAB Button */}
+      <button className="fixed bottom-24 right-5 w-14 h-14 bg-foreground text-background rounded-full shadow-lg flex items-center justify-center text-2xl">
+        +
+      </button>
 
       <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border safe-area-bottom">
         <div className="flex justify-around py-3">
           {[
             { icon: Home, path: '/dashboard', label: 'Home' },
-            { icon: BarChart3, path: '/progress', label: 'Analytics' },
+            { icon: BarChart3, path: '/progress', label: 'Progress' },
             { icon: Scan, path: '/scanner', label: 'Scan' },
             { icon: User, path: '/profile', label: 'Settings' },
           ].map(({ icon: Icon, path, label }) => (
