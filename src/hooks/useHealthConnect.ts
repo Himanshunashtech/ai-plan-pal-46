@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Capacitor } from '@capacitor/core';
+import { supabase } from '@/integrations/supabase/client';
 
 // Types for Health Connect data
 interface HealthData {
@@ -110,6 +111,69 @@ export const useHealthConnect = (): UseHealthConnectReturn => {
     }
   }, []);
 
+  const saveHealthDataToDb = useCallback(async (steps: number, caloriesBurned: number) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const today = new Date().toISOString().split('T')[0];
+
+      // Upsert the health data for today
+      const { error } = await supabase
+        .from('daily_nutrition_logs')
+        .upsert({
+          user_id: user.id,
+          log_date: today,
+          steps,
+          calories_burned: caloriesBurned
+        }, {
+          onConflict: 'user_id,log_date'
+        });
+
+      if (error) {
+        console.error('Error saving health data:', error);
+      }
+    } catch (error) {
+      console.error('Error saving health data to DB:', error);
+    }
+  }, []);
+
+  const loadHealthDataFromDb = useCallback(async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const today = new Date().toISOString().split('T')[0];
+
+      const { data, error } = await supabase
+        .from('daily_nutrition_logs')
+        .select('steps, calories_burned')
+        .eq('user_id', user.id)
+        .eq('log_date', today)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error loading health data:', error);
+        return;
+      }
+
+      if (data) {
+        setHealthData(prev => ({
+          ...prev,
+          steps: data.steps || 0,
+          caloriesBurned: data.calories_burned || 0
+        }));
+      }
+    } catch (error) {
+      console.error('Error loading health data from DB:', error);
+    }
+  }, []);
+
+  // Load persisted data on mount
+  useEffect(() => {
+    loadHealthDataFromDb();
+  }, [loadHealthDataFromDb]);
+
   const syncHealthData = useCallback(async () => {
     if (!HealthConnect || !isConnected) {
       return;
@@ -156,17 +220,23 @@ export const useHealthConnect = (): UseHealthConnectReturn => {
         }, 0);
       }
 
+      const roundedSteps = Math.round(totalSteps);
+      const roundedCalories = Math.round(totalCalories);
+
       setHealthData({
-        steps: Math.round(totalSteps),
-        caloriesBurned: Math.round(totalCalories),
+        steps: roundedSteps,
+        caloriesBurned: roundedCalories,
         lastSynced: new Date()
       });
+
+      // Save to database
+      await saveHealthDataToDb(roundedSteps, roundedCalories);
     } catch (error) {
       console.error('Error syncing health data:', error);
     } finally {
       setIsLoading(false);
     }
-  }, [isConnected]);
+  }, [isConnected, saveHealthDataToDb]);
 
   const disconnect = useCallback(() => {
     setIsConnected(false);
