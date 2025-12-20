@@ -16,10 +16,12 @@ export type Database = {
     Tables: {
       daily_nutrition_logs: {
         Row: {
+          calories_burned: number | null
           created_at: string
           id: string
           log_date: string
           notes: string | null
+          steps: number | null
           total_calories: number | null
           total_carbs: number | null
           total_fats: number | null
@@ -30,10 +32,12 @@ export type Database = {
           weight: number | null
         }
         Insert: {
+          calories_burned?: number | null
           created_at?: string
           id?: string
           log_date?: string
           notes?: string | null
+          steps?: number | null
           total_calories?: number | null
           total_carbs?: number | null
           total_fats?: number | null
@@ -44,10 +48,12 @@ export type Database = {
           weight?: number | null
         }
         Update: {
+          calories_burned?: number | null
           created_at?: string
           id?: string
           log_date?: string
           notes?: string | null
+          steps?: number | null
           total_calories?: number | null
           total_carbs?: number | null
           total_fats?: number | null
