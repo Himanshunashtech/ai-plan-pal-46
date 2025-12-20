@@ -38,7 +38,7 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `You are a nutrition expert AI that analyzes food images. When given an image of food, identify all food items visible and provide detailed nutritional information.
+            content: `You are a nutrition expert AI that analyzes food images. When given an image of food, identify all food items visible and provide detailed nutritional information including fiber, sugar, and sodium.
 
 Always respond with valid JSON in this exact format:
 {
@@ -55,7 +55,10 @@ Always respond with valid JSON in this exact format:
     "calories": number,
     "carbs": number (in grams),
     "protein": number (in grams),
-    "fats": number (in grams)
+    "fats": number (in grams),
+    "fiber": number (in grams),
+    "sugar": number (in grams),
+    "sodium": number (in milligrams)
   },
   "healthScore": number (1-10),
   "servingSize": "1 serving"
@@ -66,7 +69,7 @@ Always respond with valid JSON in this exact format:
             content: [
               {
                 type: 'text',
-                text: 'Analyze this food image. Identify each food item with its approximate position (as percentage from top-left), calories, and provide total nutritional breakdown. Return only valid JSON.'
+                text: 'Analyze this food image. Identify each food item with its approximate position (as percentage from top-left), calories, and provide total nutritional breakdown including fiber, sugar, and sodium. Return only valid JSON.'
               },
               {
                 type: 'image_url',
@@ -120,7 +123,7 @@ Always respond with valid JSON in this exact format:
         foodName: "Food detected",
         mealType: "snack",
         items: [{ name: "Unknown food", calories: 200, position: { x: 50, y: 50 } }],
-        totalNutrition: { calories: 200, carbs: 25, protein: 10, fats: 8 },
+        totalNutrition: { calories: 200, carbs: 25, protein: 10, fats: 8, fiber: 2, sugar: 5, sodium: 300 },
         healthScore: 5,
         servingSize: "1 serving"
       };

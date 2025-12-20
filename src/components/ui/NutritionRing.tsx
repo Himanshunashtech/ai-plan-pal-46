@@ -3,7 +3,7 @@ import * as React from "react";
 interface NutritionRingProps {
   value: number;
   max: number;
-  color: "calories" | "carbs" | "protein" | "fats";
+  color: "calories" | "carbs" | "protein" | "fats" | "fiber" | "sugar" | "sodium";
   size?: number;
 }
 
@@ -12,6 +12,9 @@ const colorClasses = {
   carbs: "stroke-carbs",
   protein: "stroke-protein",
   fats: "stroke-fats",
+  fiber: "stroke-fiber",
+  sugar: "stroke-sugar",
+  sodium: "stroke-sodium",
 };
 
 const NutritionRing = React.forwardRef<HTMLDivElement, NutritionRingProps>(

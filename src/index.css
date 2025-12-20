@@ -41,6 +41,9 @@
     --carbs: 30 100% 60%;
     --protein: 340 80% 60%;
     --fats: 210 80% 55%;
+    --fiber: 270 60% 60%;
+    --sugar: 330 80% 65%;
+    --sodium: 35 90% 55%;
 
     /* Destructive */
     --destructive: 0 84.2% 60.2%;
