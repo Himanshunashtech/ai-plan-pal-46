@@ -4,7 +4,7 @@ import { Link, useLocation } from 'react-router-dom';
 import NutritionRing from '@/components/ui/NutritionRing';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { format, startOfDay, endOfDay } from 'date-fns';
+import { format, startOfDay, endOfDay, subDays, isSameDay } from 'date-fns';
 
 interface FoodEntry {
   id: string;
@@ -39,36 +39,33 @@ const Dashboard = () => {
   const [dailyTotals, setDailyTotals] = useState<DailyTotals>({ calories: 0, protein: 0, carbs: 0, fats: 0 });
   const [goals, setGoals] = useState<UserGoals>({ daily_calories: 2000, daily_protein: 150, daily_carbs: 200, daily_fats: 60 });
   const [loading, setLoading] = useState(true);
+  const [selectedDate, setSelectedDate] = useState(new Date());
 
-  const days = ['S', 'S', 'M', 'T', 'W', 'T', 'F'];
   const today = new Date();
-  const dates = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(today);
-    d.setDate(today.getDate() - (6 - i));
-    return d.getDate();
-  });
-  const todayIndex = 6;
+  const weekDates = Array.from({ length: 7 }, (_, i) => subDays(today, 6 - i));
+  const dayNames = weekDates.map(d => format(d, 'EEEEE'));
 
   useEffect(() => {
     if (user) {
       fetchDashboardData();
     }
-  }, [user]);
+  }, [user, selectedDate]);
 
   const fetchDashboardData = async () => {
     if (!user) return;
     
+    setLoading(true);
     try {
-      const todayStart = startOfDay(new Date()).toISOString();
-      const todayEnd = endOfDay(new Date()).toISOString();
+      const dayStart = startOfDay(selectedDate).toISOString();
+      const dayEnd = endOfDay(selectedDate).toISOString();
 
-      // Fetch today's food entries
+      // Fetch selected day's food entries
       const { data: foods, error: foodsError } = await supabase
         .from('food_entries')
         .select('*')
         .eq('user_id', user.id)
-        .gte('logged_at', todayStart)
-        .lte('logged_at', todayEnd)
+        .gte('logged_at', dayStart)
+        .lte('logged_at', dayEnd)
         .order('logged_at', { ascending: false });
 
       if (foodsError) throw foodsError;
@@ -131,16 +128,28 @@ const Dashboard = () => {
         </div>
 
         <div className="flex justify-between mb-8">
-          {days.map((day, i) => (
-            <div key={i} className="flex flex-col items-center">
-              <span className="text-xs text-muted-foreground mb-1">{day}</span>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                i === todayIndex ? 'bg-primary text-primary-foreground' : 'text-foreground'
-              }`}>
-                {dates[i]}
-              </div>
-            </div>
-          ))}
+          {weekDates.map((date, i) => {
+            const isSelected = isSameDay(date, selectedDate);
+            const isToday = isSameDay(date, today);
+            return (
+              <button
+                key={i}
+                onClick={() => setSelectedDate(date)}
+                className="flex flex-col items-center"
+              >
+                <span className="text-xs text-muted-foreground mb-1">{dayNames[i]}</span>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
+                  isSelected 
+                    ? 'bg-primary text-primary-foreground' 
+                    : isToday 
+                      ? 'ring-2 ring-primary/50 text-foreground' 
+                      : 'text-foreground'
+                }`}>
+                  {date.getDate()}
+                </div>
+              </button>
+            );
+          })}
         </div>
 
         <div className="bg-card rounded-3xl p-6 shadow-soft mb-6">
