@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Home, BarChart3, Scan, User, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Home, BarChart3, Scan, User, ChevronLeft, ChevronRight, X, Flame, Beef, Wheat, Droplets, Heart } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import NutritionRing from '@/components/ui/NutritionRing';
 import { supabase } from '@/integrations/supabase/client';
@@ -33,6 +33,47 @@ interface UserGoals {
   daily_fats: number;
 }
 
+const calculateHealthScore = (food: FoodEntry, goals: UserGoals): number => {
+  // Calculate health score based on macro balance and calorie density
+  const protein = food.protein || 0;
+  const carbs = food.carbs || 0;
+  const fats = food.fats || 0;
+  const calories = food.calories || 1;
+  
+  // Protein ratio score (higher protein = better)
+  const proteinCalories = protein * 4;
+  const proteinRatio = proteinCalories / calories;
+  const proteinScore = Math.min(proteinRatio * 100, 40);
+  
+  // Balanced macro score
+  const totalMacros = protein + carbs + fats;
+  if (totalMacros === 0) return 50;
+  
+  const proteinPercent = (protein / totalMacros) * 100;
+  const carbPercent = (carbs / totalMacros) * 100;
+  const fatPercent = (fats / totalMacros) * 100;
+  
+  // Ideal: 30% protein, 40% carbs, 30% fat
+  const proteinDiff = Math.abs(proteinPercent - 30);
+  const carbDiff = Math.abs(carbPercent - 40);
+  const fatDiff = Math.abs(fatPercent - 30);
+  
+  const balanceScore = Math.max(0, 60 - (proteinDiff + carbDiff + fatDiff) / 3);
+  
+  return Math.round(proteinScore + balanceScore);
+};
+
+const getHealthScoreColor = (score: number): string => {
+  if (score >= 70) return 'text-green-500';
+  if (score >= 50) return 'text-amber-500';
+  return 'text-red-500';
+};
+
+const getHealthScoreLabel = (score: number): string => {
+  if (score >= 70) return 'Excellent';
+  if (score >= 50) return 'Good';
+  return 'Fair';
+};
 
 const Dashboard = () => {
   const location = useLocation();
@@ -43,6 +84,7 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [weekOffset, setWeekOffset] = useState(0);
+  const [selectedFood, setSelectedFood] = useState<FoodEntry | null>(null);
 
   const today = new Date();
   const weekStart = subDays(today, 6 + weekOffset * 7);
@@ -236,7 +278,11 @@ const Dashboard = () => {
           ) : (
             <div className="space-y-3">
               {recentFoods.slice(0, 5).map((food) => (
-                <div key={food.id} className="bg-card rounded-2xl p-4 shadow-soft flex items-center gap-4">
+                <button
+                  key={food.id}
+                  onClick={() => setSelectedFood(food)}
+                  className="w-full bg-card rounded-2xl p-4 shadow-soft flex items-center gap-4 text-left transition-transform active:scale-[0.98]"
+                >
                   {food.image_url ? (
                     <img 
                       src={food.image_url} 
@@ -259,12 +305,112 @@ const Dashboard = () => {
                       {format(new Date(food.logged_at), 'h:mm a')}
                     </p>
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           )}
         </div>
       </div>
+
+      {/* Meal Detail Modal */}
+      {selectedFood && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center"
+          onClick={() => setSelectedFood(null)}
+        >
+          <div 
+            className="bg-card rounded-t-3xl w-full max-w-lg p-6 animate-in slide-in-from-bottom duration-300"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold">Meal Details</h3>
+              <button 
+                onClick={() => setSelectedFood(null)}
+                className="p-2 rounded-full bg-secondary"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex items-center gap-4 mb-6">
+              {selectedFood.image_url ? (
+                <img 
+                  src={selectedFood.image_url} 
+                  alt={selectedFood.name} 
+                  className="w-20 h-20 rounded-2xl object-cover"
+                />
+              ) : (
+                <div className="w-20 h-20 rounded-2xl bg-secondary flex items-center justify-center">
+                  <span className="text-3xl">🍽️</span>
+                </div>
+              )}
+              <div>
+                <h4 className="font-bold text-lg">{selectedFood.name}</h4>
+                <p className="text-sm text-muted-foreground">
+                  {selectedFood.meal_type || 'Meal'} • {format(new Date(selectedFood.logged_at), 'MMM d, h:mm a')}
+                </p>
+              </div>
+            </div>
+
+            {/* Health Score */}
+            <div className="bg-secondary/50 rounded-2xl p-4 mb-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Heart className="w-5 h-5 text-red-500" />
+                  <span className="font-medium">Health Score</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`text-2xl font-bold ${getHealthScoreColor(calculateHealthScore(selectedFood, goals))}`}>
+                    {calculateHealthScore(selectedFood, goals)}
+                  </span>
+                  <span className={`text-sm ${getHealthScoreColor(calculateHealthScore(selectedFood, goals))}`}>
+                    {getHealthScoreLabel(calculateHealthScore(selectedFood, goals))}
+                  </span>
+                </div>
+              </div>
+              <div className="mt-2 h-2 bg-secondary rounded-full overflow-hidden">
+                <div 
+                  className={`h-full rounded-full transition-all ${
+                    calculateHealthScore(selectedFood, goals) >= 70 ? 'bg-green-500' :
+                    calculateHealthScore(selectedFood, goals) >= 50 ? 'bg-amber-500' : 'bg-red-500'
+                  }`}
+                  style={{ width: `${calculateHealthScore(selectedFood, goals)}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Calories */}
+            <div className="bg-secondary/50 rounded-2xl p-4 mb-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Flame className="w-5 h-5 text-orange-500" />
+                  <span className="font-medium">Calories</span>
+                </div>
+                <span className="text-xl font-bold">{selectedFood.calories}</span>
+              </div>
+            </div>
+
+            {/* Macros */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="bg-secondary/50 rounded-2xl p-4 text-center">
+                <Beef className="w-5 h-5 text-red-500 mx-auto mb-1" />
+                <p className="text-lg font-bold">{selectedFood.protein || 0}g</p>
+                <p className="text-xs text-muted-foreground">Protein</p>
+              </div>
+              <div className="bg-secondary/50 rounded-2xl p-4 text-center">
+                <Wheat className="w-5 h-5 text-amber-500 mx-auto mb-1" />
+                <p className="text-lg font-bold">{selectedFood.carbs || 0}g</p>
+                <p className="text-xs text-muted-foreground">Carbs</p>
+              </div>
+              <div className="bg-secondary/50 rounded-2xl p-4 text-center">
+                <Droplets className="w-5 h-5 text-blue-500 mx-auto mb-1" />
+                <p className="text-lg font-bold">{selectedFood.fats || 0}g</p>
+                <p className="text-xs text-muted-foreground">Fats</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border safe-area-bottom">
         <div className="flex justify-around py-3">
