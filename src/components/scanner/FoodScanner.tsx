@@ -48,9 +48,14 @@ const FoodScanner = ({ onClose, onFoodLogged }: FoodScannerProps) => {
     startCamera();
   };
 
-  const handleDone = () => {
+  const handleDone = (adjustedNutrition: { calories: number; carbs: number; protein: number; fats: number }) => {
     if (analysisResult && capturedImage) {
-      onFoodLogged(analysisResult, capturedImage);
+      // Create updated result with adjusted nutrition
+      const updatedResult: FoodAnalysisResult = {
+        ...analysisResult,
+        totalNutrition: adjustedNutrition
+      };
+      onFoodLogged(updatedResult, capturedImage);
     }
     onClose();
   };
