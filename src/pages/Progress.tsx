@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Home, BarChart3, Scan, User, TrendingUp, TrendingDown, Flame, Beef, Wheat, Droplets } from 'lucide-react';
+import { Home, BarChart3, Scan, User, TrendingUp, TrendingDown, Flame, Beef, Wheat, Droplets, Leaf, Cookie, Zap } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -13,6 +13,9 @@ interface DailyData {
   protein: number;
   carbs: number;
   fats: number;
+  fiber: number;
+  sugar: number;
+  sodium: number;
 }
 
 interface UserGoals {
@@ -20,6 +23,9 @@ interface UserGoals {
   daily_protein: number;
   daily_carbs: number;
   daily_fats: number;
+  daily_fiber: number;
+  daily_sugar: number;
+  daily_sodium: number;
 }
 
 const Progress = () => {
@@ -27,7 +33,7 @@ const Progress = () => {
   const { user } = useAuth();
   const [selectedPeriod, setSelectedPeriod] = useState<'7' | '30' | '90'>('7');
   const [dailyData, setDailyData] = useState<DailyData[]>([]);
-  const [goals, setGoals] = useState<UserGoals>({ daily_calories: 2000, daily_protein: 150, daily_carbs: 200, daily_fats: 60 });
+  const [goals, setGoals] = useState<UserGoals>({ daily_calories: 2000, daily_protein: 150, daily_carbs: 200, daily_fats: 60, daily_fiber: 25, daily_sugar: 50, daily_sodium: 2300 });
   const [loading, setLoading] = useState(true);
 
   const tabs = [
@@ -53,7 +59,7 @@ const Progress = () => {
 
       const { data: foods, error: foodsError } = await supabase
         .from('food_entries')
-        .select('calories, protein, carbs, fats, logged_at')
+        .select('calories, protein, carbs, fats, fiber, sugar, sodium, logged_at')
         .eq('user_id', user.id)
         .gte('logged_at', startDate)
         .lte('logged_at', endDate)
@@ -63,7 +69,7 @@ const Progress = () => {
 
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('daily_calories, daily_protein, daily_carbs, daily_fats')
+        .select('daily_calories, daily_protein, daily_carbs, daily_fats, daily_fiber, daily_sugar, daily_sodium')
         .eq('user_id', user.id)
         .maybeSingle();
 
@@ -74,7 +80,10 @@ const Progress = () => {
           daily_calories: profile.daily_calories || 2000,
           daily_protein: profile.daily_protein || 150,
           daily_carbs: profile.daily_carbs || 200,
-          daily_fats: profile.daily_fats || 60
+          daily_fats: profile.daily_fats || 60,
+          daily_fiber: profile.daily_fiber || 25,
+          daily_sugar: profile.daily_sugar || 50,
+          daily_sodium: profile.daily_sodium || 2300
         });
       }
 
@@ -91,7 +100,10 @@ const Progress = () => {
           calories: 0,
           protein: 0,
           carbs: 0,
-          fats: 0
+          fats: 0,
+          fiber: 0,
+          sugar: 0,
+          sodium: 0
         };
       }
 
@@ -100,9 +112,12 @@ const Progress = () => {
         const key = format(new Date(food.logged_at), 'yyyy-MM-dd');
         if (dailyMap[key]) {
           dailyMap[key].calories += food.calories || 0;
-          dailyMap[key].protein += food.protein || 0;
-          dailyMap[key].carbs += food.carbs || 0;
-          dailyMap[key].fats += food.fats || 0;
+          dailyMap[key].protein += Number(food.protein) || 0;
+          dailyMap[key].carbs += Number(food.carbs) || 0;
+          dailyMap[key].fats += Number(food.fats) || 0;
+          dailyMap[key].fiber += Number(food.fiber) || 0;
+          dailyMap[key].sugar += Number(food.sugar) || 0;
+          dailyMap[key].sodium += Number(food.sodium) || 0;
         }
       });
 
@@ -120,14 +135,20 @@ const Progress = () => {
     calories: acc.calories + d.calories,
     protein: acc.protein + d.protein,
     carbs: acc.carbs + d.carbs,
-    fats: acc.fats + d.fats
-  }), { calories: 0, protein: 0, carbs: 0, fats: 0 });
+    fats: acc.fats + d.fats,
+    fiber: acc.fiber + d.fiber,
+    sugar: acc.sugar + d.sugar,
+    sodium: acc.sodium + d.sodium
+  }), { calories: 0, protein: 0, carbs: 0, fats: 0, fiber: 0, sugar: 0, sodium: 0 });
 
   const averages = {
     calories: daysWithData > 0 ? Math.round(totals.calories / daysWithData) : 0,
     protein: daysWithData > 0 ? Math.round(totals.protein / daysWithData) : 0,
     carbs: daysWithData > 0 ? Math.round(totals.carbs / daysWithData) : 0,
-    fats: daysWithData > 0 ? Math.round(totals.fats / daysWithData) : 0
+    fats: daysWithData > 0 ? Math.round(totals.fats / daysWithData) : 0,
+    fiber: daysWithData > 0 ? Math.round(totals.fiber / daysWithData) : 0,
+    sugar: daysWithData > 0 ? Math.round(totals.sugar / daysWithData) : 0,
+    sodium: daysWithData > 0 ? Math.round(totals.sodium / daysWithData) : 0
   };
 
   const goalAchievement = goals.daily_calories > 0 
@@ -138,6 +159,12 @@ const Progress = () => {
     { name: 'Protein', value: totals.protein, color: '#ef4444' },
     { name: 'Carbs', value: totals.carbs, color: '#f59e0b' },
     { name: 'Fats', value: totals.fats, color: '#3b82f6' },
+  ];
+
+  const microData = [
+    { name: 'Fiber', value: totals.fiber, color: 'hsl(142, 76%, 36%)' },
+    { name: 'Sugar', value: totals.sugar, color: 'hsl(330, 81%, 60%)' },
+    { name: 'Sodium', value: totals.sodium, color: 'hsl(271, 81%, 56%)' },
   ];
 
   const caloriesTrend = averages.calories - goals.daily_calories;
@@ -247,6 +274,42 @@ const Progress = () => {
               </div>
             </div>
 
+            {/* Fiber, Sugar, Sodium Line Chart */}
+            <div className="bg-card rounded-2xl p-4 shadow-soft mb-6">
+              <h3 className="font-semibold mb-4">Fiber, Sugar & Sodium Over Time</h3>
+              <div className="h-48">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={dailyData}>
+                    <XAxis 
+                      dataKey="day" 
+                      axisLine={false} 
+                      tickLine={false}
+                      tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                      interval={selectedPeriod === '7' ? 0 : 'preserveStartEnd'}
+                    />
+                    <YAxis hide />
+                    <Line type="monotone" dataKey="fiber" stroke="hsl(142, 76%, 36%)" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="sugar" stroke="hsl(330, 81%, 60%)" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="sodium" stroke="hsl(271, 81%, 56%)" strokeWidth={2} dot={false} name="Sodium (÷100)" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="flex justify-center gap-6 mt-2">
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 rounded-full bg-fiber" />
+                  <span className="text-xs text-muted-foreground">Fiber</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 rounded-full bg-sugar" />
+                  <span className="text-xs text-muted-foreground">Sugar</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 rounded-full bg-sodium" />
+                  <span className="text-xs text-muted-foreground">Sodium</span>
+                </div>
+              </div>
+            </div>
+
             {/* Macro Distribution Pie */}
             <div className="bg-card rounded-2xl p-4 shadow-soft mb-6">
               <h3 className="font-semibold mb-4">Macro Distribution</h3>
@@ -274,21 +337,58 @@ const Progress = () => {
                       <Beef className="w-4 h-4 text-red-500" />
                       <span className="text-sm">Protein</span>
                     </div>
-                    <span className="font-semibold">{totals.protein}g</span>
+                    <span className="font-semibold">{Math.round(totals.protein)}g</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Wheat className="w-4 h-4 text-amber-500" />
                       <span className="text-sm">Carbs</span>
                     </div>
-                    <span className="font-semibold">{totals.carbs}g</span>
+                    <span className="font-semibold">{Math.round(totals.carbs)}g</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Droplets className="w-4 h-4 text-blue-500" />
                       <span className="text-sm">Fats</span>
                     </div>
-                    <span className="font-semibold">{totals.fats}g</span>
+                    <span className="font-semibold">{Math.round(totals.fats)}g</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Micro Nutrients Summary */}
+            <div className="bg-card rounded-2xl p-4 shadow-soft mb-6">
+              <h3 className="font-semibold mb-4">Micronutrient Summary</h3>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Leaf className="w-4 h-4 text-fiber" />
+                    <span className="text-sm">Fiber</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="font-semibold">{Math.round(totals.fiber)}g</span>
+                    <span className="text-xs text-muted-foreground ml-2">avg {averages.fiber}g/day</span>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Cookie className="w-4 h-4 text-sugar" />
+                    <span className="text-sm">Sugar</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="font-semibold">{Math.round(totals.sugar)}g</span>
+                    <span className="text-xs text-muted-foreground ml-2">avg {averages.sugar}g/day</span>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-sodium" />
+                    <span className="text-sm">Sodium</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="font-semibold">{Math.round(totals.sodium)}mg</span>
+                    <span className="text-xs text-muted-foreground ml-2">avg {averages.sodium}mg/day</span>
                   </div>
                 </div>
               </div>
