@@ -3,6 +3,7 @@ import { Home, BarChart3, Scan, User, Camera, Barcode, Image, BookOpen } from 'l
 import { Link, useLocation } from 'react-router-dom';
 import FoodScanner from '@/components/scanner/FoodScanner';
 import BarcodeScanner from '@/components/scanner/BarcodeScanner';
+import FoodLibrary from '@/components/scanner/FoodLibrary';
 import { FoodAnalysisResult, saveFoodEntry, uploadFoodImage } from '@/lib/api/food-analysis';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
@@ -57,23 +58,17 @@ const Scanner = () => {
         />
       )}
 
-      {/* Placeholder screens for label and library */}
-      {(activeMode === 'label' || activeMode === 'library') && (
+      {activeMode === 'library' && (
+        <FoodLibrary onClose={() => setActiveMode(null)} />
+      )}
+
+      {/* Placeholder screen for label */}
+      {activeMode === 'label' && (
         <div className="flex-1 flex flex-col items-center justify-center px-6">
           <div className="text-center text-white/60">
-            {activeMode === 'label' ? (
-              <>
-                <Image className="w-16 h-16 mx-auto mb-4" />
-                <p className="text-lg font-medium mb-2">Food Label Scanner</p>
-                <p className="text-sm">Scan nutrition labels for accurate data</p>
-              </>
-            ) : (
-              <>
-                <BookOpen className="w-16 h-16 mx-auto mb-4" />
-                <p className="text-lg font-medium mb-2">Food Library</p>
-                <p className="text-sm">Search from 1M+ foods in our database</p>
-              </>
-            )}
+            <Image className="w-16 h-16 mx-auto mb-4" />
+            <p className="text-lg font-medium mb-2">Food Label Scanner</p>
+            <p className="text-sm">Scan nutrition labels for accurate data</p>
           </div>
         </div>
       )}
@@ -89,7 +84,7 @@ const Scanner = () => {
       )}
 
       {/* Mode Tabs - Only show when no active scanner */}
-      {(activeMode === null || activeMode === 'label' || activeMode === 'library') && (
+      {(activeMode === null || activeMode === 'label') && (
         <div className="absolute bottom-32 left-0 right-0 px-6">
           <div className="bg-white rounded-full p-1 flex justify-around">
             {tabs.map(({ id, icon: Icon, label }) => (
