@@ -1,10 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
-import { Footprints, Flame, Droplet, Plus, Minus, Settings, RefreshCw, Link2, Check } from 'lucide-react';
+import { Footprints, Flame, Droplet, Plus, Minus, Settings } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import NutritionRing from '@/components/ui/NutritionRing';
-import { useHealthConnect } from '@/hooks/useHealthConnect';
-import { toast } from 'sonner';
+import HealthConnectWidget from '@/components/dashboard/HealthConnectWidget';
 interface NutritionData {
   caloriesLeft: number;
   proteinLeft: number;
@@ -33,7 +32,6 @@ interface DailyLog {
 
 const ActivityCarousel = ({ selectedDate, onDataChange, nutritionData }: ActivityCarouselProps) => {
   const { user } = useAuth();
-  const { isAvailable, isConnected, isLoading: healthLoading, healthData, requestPermissions, syncHealthData } = useHealthConnect();
   const [currentSlide, setCurrentSlide] = useState(0);
   const [dailyLog, setDailyLog] = useState<DailyLog>({
     steps: 0,
@@ -50,16 +48,6 @@ const ActivityCarousel = ({ selectedDate, onDataChange, nutritionData }: Activit
   const cupsInMl = 250;
   const minSwipeDistance = 50;
 
-  // Sync health data when connected and update daily log
-  useEffect(() => {
-    if (isConnected && healthData.steps > 0) {
-      setDailyLog(prev => ({
-        ...prev,
-        steps: healthData.steps,
-        calories_burned: healthData.caloriesBurned
-      }));
-    }
-  }, [isConnected, healthData]);
 
   useEffect(() => {
     if (user) {
@@ -112,31 +100,39 @@ const ActivityCarousel = ({ selectedDate, onDataChange, nutritionData }: Activit
     setDailyLog(newLog);
 
     try {
-      const { data: existing } = await supabase
+      const { data: existing, error: existingError } = await supabase
         .from('daily_nutrition_logs')
         .select('id')
         .eq('user_id', user.id)
         .eq('log_date', dateStr)
         .maybeSingle();
 
-      if (existing) {
-        await supabase
+      if (existingError) throw existingError;
+
+      const payload = {
+        water_intake: newLog.water_intake,
+        steps: newLog.steps,
+        calories_burned: newLog.calories_burned,
+        updated_at: new Date().toISOString()
+      };
+
+      if (existing?.id) {
+        const { error } = await supabase
           .from('daily_nutrition_logs')
-          .update({
-            water_intake: newLog.water_intake,
-            updated_at: new Date().toISOString()
-          })
+          .update(payload)
           .eq('id', existing.id);
+        if (error) throw error;
       } else {
-        await supabase
+        const { error } = await supabase
           .from('daily_nutrition_logs')
           .insert({
             user_id: user.id,
             log_date: dateStr,
-            water_intake: newLog.water_intake
+            ...payload
           });
+        if (error) throw error;
       }
-      
+
       onDataChange?.();
     } catch (error) {
       console.error('Error updating daily log:', error);
@@ -163,7 +159,7 @@ const ActivityCarousel = ({ selectedDate, onDataChange, nutritionData }: Activit
     const isLeftSwipe = distance > minSwipeDistance;
     const isRightSwipe = distance < -minSwipeDistance;
     
-    if (isLeftSwipe && currentSlide < 2) {
+    if (isLeftSwipe && currentSlide < slides.length - 1) {
       setCurrentSlide(prev => prev + 1);
     }
     if (isRightSwipe && currentSlide > 0) {
@@ -234,60 +230,23 @@ const ActivityCarousel = ({ selectedDate, onDataChange, nutritionData }: Activit
               <div 
                 className="w-16 h-8 border-t-4 border-l-4 border-r-4 rounded-t-full transition-colors"
                 style={{
-                  borderColor: isConnected ? 'hsl(var(--primary))' : 'hsl(var(--muted))'
+                  borderColor: dailyLog.steps > 0 ? 'hsl(var(--primary))' : 'hsl(var(--muted))'
                 }}
               />
             </div>
 
-            {/* Health Connect Button */}
-            <div 
-              className={`rounded-xl p-3 mt-auto cursor-pointer transition-all ${
-                isConnected 
-                  ? 'bg-green-100 dark:bg-green-900/30' 
-                  : 'bg-muted/50 hover:bg-muted'
-              }`}
-              onClick={async () => {
-                if (isConnected) {
-                  await syncHealthData();
-                  toast.success('Health data synced!');
-                } else {
-                  const granted = await requestPermissions();
-                  if (granted) {
-                    toast.success('Connected to Health Connect!');
-                  } else {
-                    toast.error('Failed to connect. Make sure Health Connect is installed.');
-                  }
-                }
+            <HealthConnectWidget
+              onSynced={(steps, caloriesBurned) => {
+                // keep local UI in sync; DB persistence happens in the hook
+                setDailyLog(prev => ({
+                  ...prev,
+                  steps,
+                  calories_burned: caloriesBurned
+                }));
+                // also persist into the daily log row for the selected date
+                updateDailyLog({ steps, calories_burned: caloriesBurned });
               }}
-            >
-              <div className="flex items-center gap-2">
-                <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                  isConnected 
-                    ? 'bg-green-500' 
-                    : 'bg-gradient-to-br from-green-400 via-blue-400 to-yellow-400'
-                }`}>
-                  {healthLoading ? (
-                    <RefreshCw className="w-4 h-4 text-white animate-spin" />
-                  ) : isConnected ? (
-                    <Check className="w-4 h-4 text-white" />
-                  ) : (
-                    <Link2 className="w-4 h-4 text-white" />
-                  )}
-                </div>
-                <div className="text-xs leading-tight">
-                  <p className="font-medium">
-                    {isConnected ? 'Tap to sync' : 'Connect Health'}
-                  </p>
-                  <p className="text-muted-foreground">
-                    {isConnected 
-                      ? healthData.lastSynced 
-                        ? `Updated ${new Date(healthData.lastSynced).toLocaleTimeString()}`
-                        : 'Connected'
-                      : 'to track steps'}
-                  </p>
-                </div>
-              </div>
-            </div>
+            />
           </div>
 
           {/* Calories Burned Card */}
