@@ -24,7 +24,7 @@ const FoodResultSheet = ({ result, imageUrl, onClose, onDone, onRetake }: FoodRe
   return (
     <div className="absolute inset-0 z-20 flex flex-col">
       {/* Top Image Section with Labels */}
-      <div className="h-1/2 relative">
+      <div className="h-[40%] relative flex-shrink-0">
         <img src={imageUrl} alt="Food" className="w-full h-full object-cover" />
         
         {/* Floating nutrition labels */}
@@ -44,10 +44,10 @@ const FoodResultSheet = ({ result, imageUrl, onClose, onDone, onRetake }: FoodRe
       </div>
 
       {/* Bottom Sheet */}
-      <div className="flex-1 bg-background rounded-t-3xl -mt-6 relative z-10 flex flex-col">
-        <div className="w-12 h-1 bg-muted-foreground/30 rounded-full mx-auto mt-3" />
+      <div className="flex-1 bg-background rounded-t-3xl -mt-6 relative z-10 flex flex-col overflow-hidden">
+        <div className="w-12 h-1 bg-muted-foreground/30 rounded-full mx-auto mt-3 flex-shrink-0" />
         
-        <div className="flex-1 px-6 pt-4 pb-6 overflow-y-auto">
+        <div className="flex-1 px-6 pt-4 pb-6 overflow-y-auto flex flex-col">
           {/* Meal Type Badge */}
           <span className="text-xs text-muted-foreground uppercase tracking-wide">{result.mealType}</span>
           
@@ -119,7 +119,7 @@ const FoodResultSheet = ({ result, imageUrl, onClose, onDone, onRetake }: FoodRe
           </div>
 
           {/* Health Score */}
-          <div className="flex items-center gap-3 p-3 bg-secondary/50 rounded-xl mb-6">
+          <div className="flex items-center gap-3 p-3 bg-secondary/50 rounded-xl mb-4">
             <div className="w-10 h-10 bg-pink-100 rounded-full flex items-center justify-center">
               <Heart className="w-5 h-5 text-pink-500" />
             </div>
@@ -129,21 +129,23 @@ const FoodResultSheet = ({ result, imageUrl, onClose, onDone, onRetake }: FoodRe
             <p className="text-lg font-bold text-foreground">{result.healthScore}/10</p>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex gap-3">
+          {/* Spacer to push buttons to bottom */}
+          <div className="flex-1" />
+
+          {/* Action Buttons - Always visible at bottom */}
+          <div className="flex gap-3 pt-4 flex-shrink-0">
             <Button
               variant="outline"
               className="flex-1 h-14 rounded-2xl"
               onClick={onRetake}
             >
-              <Sparkles className="w-4 h-4 mr-2" />
-              Fix Results
+              Cancel
             </Button>
             <Button
               className="flex-1 h-14 rounded-2xl"
               onClick={onDone}
             >
-              Done
+              Add Meal
             </Button>
           </div>
         </div>
