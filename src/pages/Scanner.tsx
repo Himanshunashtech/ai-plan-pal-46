@@ -103,24 +103,26 @@ const Scanner = () => {
         </div>
       )}
 
-      {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border safe-area-bottom z-50">
-        <div className="flex justify-around py-3">
-          {[
-            { icon: Home, path: '/dashboard', label: 'Home' },
-            { icon: BarChart3, path: '/progress', label: 'Analytics' },
-            { icon: Scan, path: '/scanner', label: 'Scan' },
-            { icon: User, path: '/profile', label: 'Settings' },
-          ].map(({ icon: Icon, path, label }) => (
-            <Link key={path} to={path} className={`flex flex-col items-center gap-1 px-4 ${
-              location.pathname === path ? 'text-primary' : 'text-muted-foreground'
-            }`}>
-              <Icon className="w-6 h-6" />
-              <span className="text-xs">{label}</span>
-            </Link>
-          ))}
-        </div>
-      </nav>
+      {/* Bottom Navigation - Hide when camera scanners are active */}
+      {(activeMode === null || activeMode === 'label') && (
+        <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border safe-area-bottom z-50">
+          <div className="flex justify-around py-3">
+            {[
+              { icon: Home, path: '/dashboard', label: 'Home' },
+              { icon: BarChart3, path: '/progress', label: 'Analytics' },
+              { icon: Scan, path: '/scanner', label: 'Scan' },
+              { icon: User, path: '/profile', label: 'Settings' },
+            ].map(({ icon: Icon, path, label }) => (
+              <Link key={path} to={path} className={`flex flex-col items-center gap-1 px-4 ${
+                location.pathname === path ? 'text-primary' : 'text-muted-foreground'
+              }`}>
+                <Icon className="w-6 h-6" />
+                <span className="text-xs">{label}</span>
+              </Link>
+            ))}
+          </div>
+        </nav>
+      )}
     </div>
   );
 };
