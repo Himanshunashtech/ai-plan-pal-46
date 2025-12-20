@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Home, BarChart3, Scan, User, ChevronLeft, ChevronRight, X, Flame, Beef, Wheat, Droplets, Heart } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import NutritionRing from '@/components/ui/NutritionRing';
+import ActivityCarousel from '@/components/dashboard/ActivityCarousel';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { format, startOfDay, endOfDay, subDays, addDays, isSameDay } from 'date-fns';
@@ -242,7 +243,7 @@ const Dashboard = () => {
         </div>
 
 
-        <div className="grid grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-3 gap-4 mb-6">
           <div className="bg-card rounded-2xl p-4 shadow-soft text-center">
             <NutritionRing value={proteinLeft} max={goals.daily_protein} color="protein" size={50} />
             <p className="font-bold mt-2">{Math.round(proteinLeft)}g</p>
@@ -259,6 +260,9 @@ const Dashboard = () => {
             <p className="text-xs text-muted-foreground">Fat left</p>
           </div>
         </div>
+
+        {/* Activity Carousel - Steps, Calories Burned, Water */}
+        <ActivityCarousel selectedDate={selectedDate} onDataChange={fetchDashboardData} />
 
         <div>
           <h3 className="font-semibold mb-4">
