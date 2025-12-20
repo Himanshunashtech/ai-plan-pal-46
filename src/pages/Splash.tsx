@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Flame } from 'lucide-react';
+import alleAiLogo from '@/assets/alle-ai-logo.png';
 
 const Splash = () => {
   const navigate = useNavigate();
@@ -18,18 +18,15 @@ const Splash = () => {
       <div className="flex flex-col items-center gap-6 animate-fade-in">
         {/* Logo */}
         <div className="relative">
-          <div className="w-20 h-20 rounded-3xl bg-primary flex items-center justify-center shadow-elevated">
-            <Flame className="w-10 h-10 text-primary-foreground" />
-          </div>
-          <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-accent flex items-center justify-center">
-            <span className="text-xs font-bold text-accent-foreground">AI</span>
+          <div className="w-20 h-20 rounded-3xl bg-background flex items-center justify-center">
+            <img src={alleAiLogo} alt="Alle AI Logo" className="w-16 h-16 object-contain" />
           </div>
         </div>
 
         {/* App Name */}
         <div className="text-center">
           <h1 className="text-3xl font-bold text-foreground tracking-tight">
-            Cal AI
+            Alle AI
           </h1>
           <p className="text-muted-foreground mt-1 text-sm">
             Smart Calorie Tracking
