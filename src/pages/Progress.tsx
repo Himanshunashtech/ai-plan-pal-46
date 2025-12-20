@@ -294,6 +294,32 @@ const Progress = () => {
               </div>
             </div>
 
+            {/* vs Weekly Average Card */}
+            <div className="bg-card rounded-2xl p-4 shadow-soft mb-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Today vs {selectedPeriod} Day Average</p>
+                  <p className="text-lg font-semibold">
+                    {dailyData[dailyData.length - 1]?.calories || 0} / {averages.calories} cal
+                  </p>
+                </div>
+                <div className={`flex items-center gap-1 px-3 py-1 rounded-full ${
+                  (dailyData[dailyData.length - 1]?.calories || 0) > averages.calories 
+                    ? 'bg-orange-100 text-orange-600' 
+                    : 'bg-green-100 text-green-600'
+                }`}>
+                  {(dailyData[dailyData.length - 1]?.calories || 0) > averages.calories ? (
+                    <TrendingUp className="w-4 h-4" />
+                  ) : (
+                    <TrendingDown className="w-4 h-4" />
+                  )}
+                  <span className="text-sm font-medium">
+                    {Math.abs((dailyData[dailyData.length - 1]?.calories || 0) - averages.calories)} cal
+                  </span>
+                </div>
+              </div>
+            </div>
+
             {/* Stats Summary */}
             <div>
               <h3 className="font-semibold mb-4">Summary</h3>
