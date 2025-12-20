@@ -1,21 +1,12 @@
-import { useState } from 'react';
-import { Home, BarChart3, Scan, User, ChevronRight, LogOut, Bell } from 'lucide-react';
+import { Home, BarChart3, Scan, User, ChevronRight, LogOut } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet';
-import { NotificationSettings } from '@/components/settings/NotificationSettings';
 
 const Profile = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   const handleSignOut = async () => {
     await signOut();
@@ -23,12 +14,12 @@ const Profile = () => {
   };
 
   const menuItems = [
-    { label: 'Edit Profile', path: '#', onClick: undefined },
-    { label: 'Nutrition Goals', path: '#', onClick: undefined },
-    { label: 'Notifications', path: '#', onClick: () => setNotificationsOpen(true), icon: Bell },
-    { label: 'Subscription', path: '#', onClick: undefined },
-    { label: 'Help & Support', path: '#', onClick: undefined },
-    { label: 'Privacy Policy', path: '#', onClick: undefined },
+    { label: 'Edit Profile', path: '#' },
+    { label: 'Nutrition Goals', path: '#' },
+    { label: 'Notifications', path: '/notifications' },
+    { label: 'Subscription', path: '#' },
+    { label: 'Help & Support', path: '#' },
+    { label: 'Privacy Policy', path: '#' },
   ];
 
   return (
@@ -48,42 +39,18 @@ const Profile = () => {
 
         <div className="bg-card rounded-2xl shadow-soft overflow-hidden">
           {menuItems.map((item, i) => (
-            item.onClick ? (
-              <button
-                key={item.label}
-                onClick={item.onClick}
-                className={`flex items-center justify-between p-4 hover:bg-secondary transition-colors w-full text-left ${
-                  i !== menuItems.length - 1 ? 'border-b border-border' : ''
-                }`}
-              >
-                <span>{item.label}</span>
-                <ChevronRight className="w-5 h-5 text-muted-foreground" />
-              </button>
-            ) : (
-              <Link
-                key={item.label}
-                to={item.path}
-                className={`flex items-center justify-between p-4 hover:bg-secondary transition-colors ${
-                  i !== menuItems.length - 1 ? 'border-b border-border' : ''
-                }`}
-              >
-                <span>{item.label}</span>
-                <ChevronRight className="w-5 h-5 text-muted-foreground" />
-              </Link>
-            )
+            <Link
+              key={item.label}
+              to={item.path}
+              className={`flex items-center justify-between p-4 hover:bg-secondary transition-colors ${
+                i !== menuItems.length - 1 ? 'border-b border-border' : ''
+              }`}
+            >
+              <span>{item.label}</span>
+              <ChevronRight className="w-5 h-5 text-muted-foreground" />
+            </Link>
           ))}
         </div>
-
-        <Sheet open={notificationsOpen} onOpenChange={setNotificationsOpen}>
-          <SheetContent className="overflow-y-auto">
-            <SheetHeader>
-              <SheetTitle>Notification Settings</SheetTitle>
-            </SheetHeader>
-            <div className="mt-6">
-              <NotificationSettings />
-            </div>
-          </SheetContent>
-        </Sheet>
 
         <Button
           variant="outline"

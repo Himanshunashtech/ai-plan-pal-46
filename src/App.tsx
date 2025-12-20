@@ -15,6 +15,7 @@ import Dashboard from "./pages/Dashboard";
 import Progress from "./pages/Progress";
 import Scanner from "./pages/Scanner";
 import Profile from "./pages/Profile";
+import Notifications from "./pages/Notifications";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -38,6 +39,7 @@ const App = () => (
               <Route path="/progress" element={<Progress />} />
               <Route path="/scanner" element={<Scanner />} />
               <Route path="/profile" element={<Profile />} />
+              <Route path="/notifications" element={<Notifications />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
