@@ -1,24 +1,49 @@
 import { useState } from 'react';
 import { FoodAnalysisResult } from '@/lib/api/food-analysis';
 import { Button } from '@/components/ui/button';
-import { Flame, Wheat, Beef, Droplets, Heart, Minus, Plus, Sparkles } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Flame, Wheat, Beef, Droplets, Heart, Minus, Plus, Pencil, Check } from 'lucide-react';
 
 interface FoodResultSheetProps {
   result: FoodAnalysisResult;
   imageUrl: string;
   onClose: () => void;
-  onDone: () => void;
+  onDone: (adjustedNutrition: { calories: number; carbs: number; protein: number; fats: number }) => void;
   onRetake: () => void;
 }
 
 const FoodResultSheet = ({ result, imageUrl, onClose, onDone, onRetake }: FoodResultSheetProps) => {
   const [servings, setServings] = useState(1);
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [customValues, setCustomValues] = useState({
+    calories: result.totalNutrition.calories,
+    carbs: result.totalNutrition.carbs,
+    protein: result.totalNutrition.protein,
+    fats: result.totalNutrition.fats
+  });
 
   const adjustedNutrition = {
-    calories: Math.round(result.totalNutrition.calories * servings),
-    carbs: Math.round(result.totalNutrition.carbs * servings),
-    protein: Math.round(result.totalNutrition.protein * servings),
-    fats: Math.round(result.totalNutrition.fats * servings)
+    calories: Math.round(customValues.calories * servings),
+    carbs: Math.round(customValues.carbs * servings),
+    protein: Math.round(customValues.protein * servings),
+    fats: Math.round(customValues.fats * servings)
+  };
+
+  const handleEdit = (field: string) => {
+    setEditingField(field);
+  };
+
+  const handleSave = () => {
+    setEditingField(null);
+  };
+
+  const handleValueChange = (field: keyof typeof customValues, value: string) => {
+    const numValue = parseInt(value) || 0;
+    setCustomValues(prev => ({ ...prev, [field]: numValue }));
+  };
+
+  const handleDone = () => {
+    onDone(adjustedNutrition);
   };
 
   return (
@@ -77,44 +102,108 @@ const FoodResultSheet = ({ result, imageUrl, onClose, onDone, onRetake }: FoodRe
 
           {/* Nutrition Grid */}
           <div className="grid grid-cols-2 gap-3 mb-4">
-            <div className="flex items-center gap-3 p-3 bg-secondary/50 rounded-xl">
+            <div className="flex items-center gap-3 p-3 bg-secondary/50 rounded-xl relative">
               <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
                 <Flame className="w-5 h-5 text-orange-500" />
               </div>
-              <div>
+              <div className="flex-1">
                 <p className="text-xs text-muted-foreground">Calories</p>
-                <p className="text-lg font-bold text-foreground">{adjustedNutrition.calories}</p>
+                {editingField === 'calories' ? (
+                  <Input
+                    type="number"
+                    value={customValues.calories}
+                    onChange={(e) => handleValueChange('calories', e.target.value)}
+                    className="h-7 w-20 text-lg font-bold p-1"
+                    autoFocus
+                  />
+                ) : (
+                  <p className="text-lg font-bold text-foreground">{adjustedNutrition.calories}</p>
+                )}
               </div>
+              <button
+                onClick={() => editingField === 'calories' ? handleSave() : handleEdit('calories')}
+                className="absolute bottom-2 right-2 text-muted-foreground hover:text-foreground"
+              >
+                {editingField === 'calories' ? <Check className="w-4 h-4" /> : <Pencil className="w-4 h-4" />}
+              </button>
             </div>
             
-            <div className="flex items-center gap-3 p-3 bg-secondary/50 rounded-xl">
+            <div className="flex items-center gap-3 p-3 bg-secondary/50 rounded-xl relative">
               <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
                 <Wheat className="w-5 h-5 text-amber-600" />
               </div>
-              <div>
+              <div className="flex-1">
                 <p className="text-xs text-muted-foreground">Carbs</p>
-                <p className="text-lg font-bold text-foreground">{adjustedNutrition.carbs}g</p>
+                {editingField === 'carbs' ? (
+                  <Input
+                    type="number"
+                    value={customValues.carbs}
+                    onChange={(e) => handleValueChange('carbs', e.target.value)}
+                    className="h-7 w-20 text-lg font-bold p-1"
+                    autoFocus
+                  />
+                ) : (
+                  <p className="text-lg font-bold text-foreground">{adjustedNutrition.carbs}g</p>
+                )}
               </div>
+              <button
+                onClick={() => editingField === 'carbs' ? handleSave() : handleEdit('carbs')}
+                className="absolute bottom-2 right-2 text-muted-foreground hover:text-foreground"
+              >
+                {editingField === 'carbs' ? <Check className="w-4 h-4" /> : <Pencil className="w-4 h-4" />}
+              </button>
             </div>
             
-            <div className="flex items-center gap-3 p-3 bg-secondary/50 rounded-xl">
+            <div className="flex items-center gap-3 p-3 bg-secondary/50 rounded-xl relative">
               <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
                 <Beef className="w-5 h-5 text-red-500" />
               </div>
-              <div>
+              <div className="flex-1">
                 <p className="text-xs text-muted-foreground">Protein</p>
-                <p className="text-lg font-bold text-foreground">{adjustedNutrition.protein}g</p>
+                {editingField === 'protein' ? (
+                  <Input
+                    type="number"
+                    value={customValues.protein}
+                    onChange={(e) => handleValueChange('protein', e.target.value)}
+                    className="h-7 w-20 text-lg font-bold p-1"
+                    autoFocus
+                  />
+                ) : (
+                  <p className="text-lg font-bold text-foreground">{adjustedNutrition.protein}g</p>
+                )}
               </div>
+              <button
+                onClick={() => editingField === 'protein' ? handleSave() : handleEdit('protein')}
+                className="absolute bottom-2 right-2 text-muted-foreground hover:text-foreground"
+              >
+                {editingField === 'protein' ? <Check className="w-4 h-4" /> : <Pencil className="w-4 h-4" />}
+              </button>
             </div>
             
-            <div className="flex items-center gap-3 p-3 bg-secondary/50 rounded-xl">
+            <div className="flex items-center gap-3 p-3 bg-secondary/50 rounded-xl relative">
               <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
                 <Droplets className="w-5 h-5 text-blue-500" />
               </div>
-              <div>
+              <div className="flex-1">
                 <p className="text-xs text-muted-foreground">Fats</p>
-                <p className="text-lg font-bold text-foreground">{adjustedNutrition.fats}g</p>
+                {editingField === 'fats' ? (
+                  <Input
+                    type="number"
+                    value={customValues.fats}
+                    onChange={(e) => handleValueChange('fats', e.target.value)}
+                    className="h-7 w-20 text-lg font-bold p-1"
+                    autoFocus
+                  />
+                ) : (
+                  <p className="text-lg font-bold text-foreground">{adjustedNutrition.fats}g</p>
+                )}
               </div>
+              <button
+                onClick={() => editingField === 'fats' ? handleSave() : handleEdit('fats')}
+                className="absolute bottom-2 right-2 text-muted-foreground hover:text-foreground"
+              >
+                {editingField === 'fats' ? <Check className="w-4 h-4" /> : <Pencil className="w-4 h-4" />}
+              </button>
             </div>
           </div>
 
@@ -143,7 +232,7 @@ const FoodResultSheet = ({ result, imageUrl, onClose, onDone, onRetake }: FoodRe
             </Button>
             <Button
               className="flex-1 h-14 rounded-2xl"
-              onClick={onDone}
+              onClick={handleDone}
             >
               Add Meal
             </Button>
