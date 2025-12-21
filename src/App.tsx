@@ -20,6 +20,7 @@ import EditProfile from "./pages/EditProfile";
 import NutritionGoals from "./pages/NutritionGoals";
 import Notifications from "./pages/Notifications";
 import EmailPreferences from "./pages/EmailPreferences";
+import Milestones from "./pages/Milestones";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -48,6 +49,7 @@ const App = () => (
               <Route path="/nutrition-goals" element={<NutritionGoals />} />
               <Route path="/notifications" element={<Notifications />} />
               <Route path="/email-preferences" element={<EmailPreferences />} />
+              <Route path="/milestones" element={<Milestones />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
