@@ -23,6 +23,7 @@ import {
   saveNotificationSettings,
   defaultNotificationSettings,
 } from "@/lib/api/notifications";
+import { PushNotificationSettings } from "./PushNotificationSettings";
 
 const timeOptions = Array.from({ length: 24 }, (_, i) => {
   const hour = i.toString().padStart(2, "0");
@@ -244,9 +245,8 @@ export function NotificationSettings() {
         )}
       </div>
 
-      <p className="text-xs text-muted-foreground text-center">
-        Push notifications require the app to be installed on your device
-      </p>
+      {/* Push Notifications */}
+      <PushNotificationSettings />
     </div>
   );
 }
