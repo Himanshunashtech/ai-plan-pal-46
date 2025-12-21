@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { checkMealBadges } from '@/lib/badge-triggers';
 
 export interface FoodItem {
   name: string;
@@ -39,11 +40,16 @@ export async function analyzeFood(imageBase64: string): Promise<FoodAnalysisResu
   return data.data;
 }
 
+export interface SaveFoodResult {
+  entry: any;
+  earnedBadgeId: string | null;
+}
+
 export async function saveFoodEntry(
   userId: string,
   analysis: FoodAnalysisResult,
   imageUrl?: string
-) {
+): Promise<SaveFoodResult> {
   const { data, error } = await supabase
     .from('food_entries')
     .insert({
@@ -65,7 +71,11 @@ export async function saveFoodEntry(
     .single();
 
   if (error) throw error;
-  return data;
+
+  // Check for meal badges
+  const earnedBadgeId = await checkMealBadges(userId);
+
+  return { entry: data, earnedBadgeId };
 }
 
 export async function uploadFoodImage(userId: string, imageBase64: string): Promise<string> {

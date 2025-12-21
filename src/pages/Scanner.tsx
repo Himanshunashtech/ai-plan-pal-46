@@ -1,19 +1,25 @@
 import { useState } from 'react';
 import { Home, BarChart3, Scan, User, Camera, Barcode, Image, BookOpen } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import FoodScanner from '@/components/scanner/FoodScanner';
 import BarcodeScanner from '@/components/scanner/BarcodeScanner';
 import FoodLibrary from '@/components/scanner/FoodLibrary';
 import { FoodAnalysisResult, saveFoodEntry, uploadFoodImage } from '@/lib/api/food-analysis';
 import { useAuth } from '@/contexts/AuthContext';
+import { useBadges } from '@/hooks/useBadges';
+import { BadgeCelebration } from '@/components/badges/BadgeCelebration';
+import { getBadgeById } from '@/lib/badges';
 import { toast } from '@/hooks/use-toast';
 
 type ScanMode = 'food' | 'barcode' | 'label' | 'library' | null;
 
 const Scanner = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { user } = useAuth();
+  const { earnBadge, hasBadge } = useBadges();
   const [activeMode, setActiveMode] = useState<ScanMode>('food');
+  const [earnedBadgeId, setEarnedBadgeId] = useState<string | null>(null);
 
   const tabs = [
     { id: 'food' as const, icon: Camera, label: 'Scan Food' },
@@ -30,8 +36,16 @@ const Scanner = () => {
 
     try {
       const imageUrl = await uploadFoodImage(user.id, imageBase64);
-      await saveFoodEntry(user.id, result, imageUrl);
+      const { earnedBadgeId: badgeId } = await saveFoodEntry(user.id, result, imageUrl);
       toast({ title: 'Success!', description: `${result.foodName} logged - ${result.totalNutrition.calories} calories` });
+
+      // Check and award meal badges
+      if (badgeId && !hasBadge(badgeId)) {
+        const awarded = await earnBadge(badgeId);
+        if (awarded) {
+          setEarnedBadgeId(badgeId);
+        }
+      }
     } catch (error) {
       console.error('Error saving food:', error);
       toast({ title: 'Error', description: 'Failed to save food entry', variant: 'destructive' });
@@ -43,6 +57,7 @@ const Scanner = () => {
   };
 
   return (
+    <>
     <div className="min-h-screen bg-black flex flex-col safe-area-top safe-area-bottom">
       {/* Render active scanner */}
       {activeMode === 'food' && (
@@ -124,6 +139,19 @@ const Scanner = () => {
         </nav>
       )}
     </div>
+
+    {/* Badge Celebration */}
+    {earnedBadgeId && getBadgeById(earnedBadgeId) && (
+      <BadgeCelebration
+        badge={getBadgeById(earnedBadgeId)!}
+        onClose={() => setEarnedBadgeId(null)}
+        onViewAll={() => {
+          setEarnedBadgeId(null);
+          navigate('/milestones');
+        }}
+      />
+    )}
+    </>
   );
 };
 
