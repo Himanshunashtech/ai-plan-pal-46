@@ -16,6 +16,7 @@ import Dashboard from "./pages/Dashboard";
 import Progress from "./pages/Progress";
 import Scanner from "./pages/Scanner";
 import Profile from "./pages/Profile";
+import EditProfile from "./pages/EditProfile";
 import NutritionGoals from "./pages/NutritionGoals";
 import Notifications from "./pages/Notifications";
 import NotFound from "./pages/NotFound";
@@ -42,6 +43,7 @@ const App = () => (
               <Route path="/progress" element={<Progress />} />
               <Route path="/scanner" element={<Scanner />} />
               <Route path="/profile" element={<Profile />} />
+              <Route path="/edit-profile" element={<EditProfile />} />
               <Route path="/nutrition-goals" element={<NutritionGoals />} />
               <Route path="/notifications" element={<Notifications />} />
               <Route path="*" element={<NotFound />} />
