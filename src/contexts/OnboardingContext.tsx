@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 
 export interface OnboardingData {
   gender?: 'male' | 'female' | 'other';
@@ -26,6 +26,7 @@ export interface OnboardingData {
   healthConditions?: string[];
   medications?: boolean;
   targetDate?: Date;
+  fullName?: string;
 }
 
 export interface GeneratedPlan {
@@ -52,12 +53,40 @@ interface OnboardingContextType {
 
 const OnboardingContext = createContext<OnboardingContextType | undefined>(undefined);
 
-const TOTAL_STEPS = 25;
+const TOTAL_STEPS = 27;
+const STORAGE_KEY = 'onboarding_progress';
+
+const loadFromStorage = (): { step: number; data: OnboardingData } => {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      return { step: parsed.step || 1, data: parsed.data || {} };
+    }
+  } catch (e) {
+    console.error('Failed to load onboarding progress:', e);
+  }
+  return { step: 1, data: {} };
+};
+
+const saveToStorage = (step: number, data: OnboardingData) => {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ step, data }));
+  } catch (e) {
+    console.error('Failed to save onboarding progress:', e);
+  }
+};
 
 export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [step, setStep] = useState(1);
-  const [data, setData] = useState<OnboardingData>({});
+  const stored = loadFromStorage();
+  const [step, setStep] = useState(stored.step);
+  const [data, setData] = useState<OnboardingData>(stored.data);
   const [generatedPlan, setGeneratedPlan] = useState<GeneratedPlan | null>(null);
+
+  // Persist progress on changes
+  useEffect(() => {
+    saveToStorage(step, data);
+  }, [step, data]);
 
   const nextStep = () => {
     if (step < TOTAL_STEPS) {
@@ -79,6 +108,7 @@ export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children
     setStep(1);
     setData({});
     setGeneratedPlan(null);
+    localStorage.removeItem(STORAGE_KEY);
   };
 
   return (

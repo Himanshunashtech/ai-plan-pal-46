@@ -2,11 +2,29 @@ import { Home, BarChart3, Scan, User, ChevronRight, LogOut } from 'lucide-react'
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
+import { useEffect, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 const Profile = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
+  const [fullName, setFullName] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!user) return;
+      const { data } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('user_id', user.id)
+        .single();
+      if (data?.full_name) {
+        setFullName(data.full_name);
+      }
+    };
+    fetchProfile();
+  }, [user]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -32,8 +50,8 @@ const Profile = () => {
             <User className="w-8 h-8 text-muted-foreground" />
           </div>
           <div>
-            <p className="font-semibold">{user?.email || 'Guest User'}</p>
-            <p className="text-sm text-muted-foreground">Premium Member</p>
+            <p className="font-semibold">{fullName || 'User'}</p>
+            <p className="text-sm text-muted-foreground">{user?.email || 'Guest'}</p>
           </div>
         </div>
 

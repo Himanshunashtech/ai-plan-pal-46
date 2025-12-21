@@ -235,18 +235,20 @@ const Auth = () => {
           </Button>
         </form>
 
-        {/* Toggle Mode */}
-        <div className="mt-8 text-center animate-fade-in" style={{ animationDelay: '400ms' }}>
-          <p className="text-muted-foreground">
-            {mode === 'login' ? "Don't have an account?" : 'Already have an account?'}
-            <button
-              onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}
-              className="ml-1 text-foreground font-semibold hover:underline"
-            >
-              {mode === 'login' ? 'Sign Up' : 'Sign In'}
-            </button>
-          </p>
-        </div>
+        {/* Forgot Password - only show for login */}
+        {mode === 'login' && (
+          <div className="mt-8 text-center animate-fade-in" style={{ animationDelay: '400ms' }}>
+            <p className="text-muted-foreground">
+              New to Alle AI?{' '}
+              <button
+                onClick={() => navigate('/welcome')}
+                className="text-foreground font-semibold hover:underline"
+              >
+                Get Started
+              </button>
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
