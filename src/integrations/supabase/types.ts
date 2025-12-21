@@ -131,6 +131,81 @@ export type Database = {
         }
         Relationships: []
       }
+      goal_progress: {
+        Row: {
+          calories_actual: number | null
+          calories_target: number | null
+          carbs_actual: number | null
+          carbs_target: number | null
+          created_at: string
+          days_logged: number | null
+          fats_actual: number | null
+          fats_target: number | null
+          fiber_actual: number | null
+          fiber_target: number | null
+          id: string
+          period_end: string
+          period_start: string
+          period_type: string
+          protein_actual: number | null
+          protein_target: number | null
+          sodium_actual: number | null
+          sodium_target: number | null
+          sugar_actual: number | null
+          sugar_target: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          calories_actual?: number | null
+          calories_target?: number | null
+          carbs_actual?: number | null
+          carbs_target?: number | null
+          created_at?: string
+          days_logged?: number | null
+          fats_actual?: number | null
+          fats_target?: number | null
+          fiber_actual?: number | null
+          fiber_target?: number | null
+          id?: string
+          period_end: string
+          period_start: string
+          period_type: string
+          protein_actual?: number | null
+          protein_target?: number | null
+          sodium_actual?: number | null
+          sodium_target?: number | null
+          sugar_actual?: number | null
+          sugar_target?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          calories_actual?: number | null
+          calories_target?: number | null
+          carbs_actual?: number | null
+          carbs_target?: number | null
+          created_at?: string
+          days_logged?: number | null
+          fats_actual?: number | null
+          fats_target?: number | null
+          fiber_actual?: number | null
+          fiber_target?: number | null
+          id?: string
+          period_end?: string
+          period_start?: string
+          period_type?: string
+          protein_actual?: number | null
+          protein_target?: number | null
+          sodium_actual?: number | null
+          sodium_target?: number | null
+          sugar_actual?: number | null
+          sugar_target?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           activity_level: string | null
@@ -260,6 +335,72 @@ export type Database = {
           water_intake?: number | null
           weekly_goal?: number | null
           weight_unit?: string | null
+        }
+        Relationships: []
+      }
+      user_notifications: {
+        Row: {
+          created_at: string
+          data: Json | null
+          id: string
+          message: string
+          read: boolean
+          snoozed_until: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          message: string
+          read?: boolean
+          snoozed_until?: string | null
+          title: string
+          type?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          message?: string
+          read?: boolean
+          snoozed_until?: string | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_streaks: {
+        Row: {
+          created_at: string
+          current_streak: number
+          id: string
+          last_log_date: string | null
+          longest_streak: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_streak?: number
+          id?: string
+          last_log_date?: string | null
+          longest_streak?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_streak?: number
+          id?: string
+          last_log_date?: string | null
+          longest_streak?: number
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
