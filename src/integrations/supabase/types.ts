@@ -223,6 +223,10 @@ export type Database = {
           daily_sodium: number | null
           daily_sugar: number | null
           diet_type: string | null
+          email_meal_reminders: boolean | null
+          email_streak_alerts: boolean | null
+          email_tips_updates: boolean | null
+          email_weekly_summary: boolean | null
           exercise_frequency: number | null
           exercise_type: string[] | null
           full_name: string | null
@@ -267,6 +271,10 @@ export type Database = {
           daily_sodium?: number | null
           daily_sugar?: number | null
           diet_type?: string | null
+          email_meal_reminders?: boolean | null
+          email_streak_alerts?: boolean | null
+          email_tips_updates?: boolean | null
+          email_weekly_summary?: boolean | null
           exercise_frequency?: number | null
           exercise_type?: string[] | null
           full_name?: string | null
@@ -311,6 +319,10 @@ export type Database = {
           daily_sodium?: number | null
           daily_sugar?: number | null
           diet_type?: string | null
+          email_meal_reminders?: boolean | null
+          email_streak_alerts?: boolean | null
+          email_tips_updates?: boolean | null
+          email_weekly_summary?: boolean | null
           exercise_frequency?: number | null
           exercise_type?: string[] | null
           full_name?: string | null

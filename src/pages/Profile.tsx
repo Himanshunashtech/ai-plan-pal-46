@@ -45,6 +45,7 @@ const Profile = () => {
     { label: 'Edit Profile', path: '/edit-profile' },
     { label: 'Nutrition Goals', path: '/nutrition-goals' },
     { label: 'Notifications', path: '/notifications' },
+    { label: 'Email Preferences', path: '/email-preferences' },
     { label: 'Subscription', path: '#' },
     { label: 'Help & Support', path: '#' },
     { label: 'Privacy Policy', path: '#' },

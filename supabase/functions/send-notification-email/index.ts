@@ -49,15 +49,38 @@ serve(async (req) => {
 
     const userEmail = userData.user.email;
     
-    // Get user profile for personalization
+    // Get user profile for personalization and email preferences
     const { data: profile } = await supabase
       .from('profiles')
-      .select('full_name, scheduled_deletion_at')
+      .select('full_name, scheduled_deletion_at, email_weekly_summary, email_meal_reminders, email_streak_alerts, email_tips_updates')
       .eq('user_id', userId)
       .single();
     
     const userName = profile?.full_name || 'there';
     const deletionDate = profile?.scheduled_deletion_at;
+
+    // Check email preferences based on notification type
+    const emailPreferences = {
+      weekly_summary: profile?.email_weekly_summary ?? true,
+      meal_reminder: profile?.email_meal_reminders ?? true,
+      streak_alert: profile?.email_streak_alerts ?? true,
+      tips_update: profile?.email_tips_updates ?? true,
+    };
+
+    // Map notification types to preference keys
+    const preferenceMap: Record<string, keyof typeof emailPreferences> = {
+      weekly_summary: 'weekly_summary',
+    };
+
+    // Check if user has opted out of this email type
+    const preferenceKey = preferenceMap[type];
+    if (preferenceKey && !emailPreferences[preferenceKey]) {
+      console.log(`User ${userId} has opted out of ${type} emails`);
+      return new Response(
+        JSON.stringify({ success: true, message: 'User opted out of this email type' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     let subject = '';
     let htmlContent = '';
