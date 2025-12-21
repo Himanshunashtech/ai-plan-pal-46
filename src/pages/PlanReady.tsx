@@ -1,18 +1,13 @@
-import { useNavigate } from 'react-router-dom';
 import { useOnboarding } from '@/contexts/OnboardingContext';
-import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, Loader2 } from 'lucide-react';
+import { CheckCircle } from 'lucide-react';
 import NutritionRing from '@/components/ui/NutritionRing';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/hooks/use-toast';
 import { useState } from 'react';
+import AuthBottomSheet from '@/components/auth/AuthBottomSheet';
 
 const PlanReady = () => {
-  const navigate = useNavigate();
   const { generatedPlan, data } = useOnboarding();
-  const { user } = useAuth();
-  const [isSaving, setIsSaving] = useState(false);
+  const [showAuthSheet, setShowAuthSheet] = useState(false);
 
   const plan = generatedPlan || {
     dailyCalories: 1828,
@@ -22,61 +17,8 @@ const PlanReady = () => {
     targetWeight: data.targetWeight || 62,
   };
 
-  const handleContinue = async () => {
-    if (!user) {
-      navigate('/paywall');
-      return;
-    }
-
-    setIsSaving(true);
-    try {
-      // Save onboarding data to profile
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          gender: data.gender,
-          age: data.age,
-          height: data.height,
-          height_unit: data.heightUnit || 'cm',
-          current_weight: data.currentWeight,
-          target_weight: data.targetWeight,
-          weight_unit: data.weightUnit || 'kg',
-          activity_level: data.activityLevel,
-          goal: data.goal,
-          weekly_goal: data.weeklyGoal,
-          diet_type: data.dietType,
-          allergies: data.allergies,
-          meals_per_day: data.mealsPerDay,
-          water_intake: data.waterIntake,
-          sleep_hours: data.sleepHours,
-          stress_level: data.stressLevel,
-          motivation: data.motivation,
-          previous_diets: data.previousDiets,
-          cooking_time: data.cookingTime,
-          snacking: data.snacking,
-          exercise_frequency: data.exerciseFrequency,
-          exercise_type: data.exerciseType,
-          health_conditions: data.healthConditions,
-          medications: data.medications,
-          target_date: data.targetDate?.toISOString().split('T')[0],
-          daily_calories: plan.dailyCalories,
-          daily_carbs: plan.dailyCarbs,
-          daily_protein: plan.dailyProtein,
-          daily_fats: plan.dailyFats,
-          onboarding_completed: true
-        })
-        .eq('user_id', user.id);
-
-      if (error) throw error;
-
-      toast({ title: 'Profile saved!', description: 'Your personalized plan is ready.' });
-      navigate('/paywall');
-    } catch (error) {
-      console.error('Error saving profile:', error);
-      toast({ title: 'Error', description: 'Failed to save profile. Please try again.', variant: 'destructive' });
-    } finally {
-      setIsSaving(false);
-    }
+  const handleContinue = () => {
+    setShowAuthSheet(true);
   };
 
   return (
@@ -119,16 +61,11 @@ const PlanReady = () => {
         </div>
       </div>
 
-      <Button size="lg" className="w-full mt-8" onClick={handleContinue} disabled={isSaving}>
-        {isSaving ? (
-          <>
-            <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-            Saving...
-          </>
-        ) : (
-          "Let's get started!"
-        )}
+      <Button size="lg" className="w-full mt-8" onClick={handleContinue}>
+        Let's get started!
       </Button>
+
+      <AuthBottomSheet open={showAuthSheet} onOpenChange={setShowAuthSheet} />
     </div>
   );
 };
