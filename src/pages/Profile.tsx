@@ -5,22 +5,27 @@ import { Button } from '@/components/ui/button';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
+interface ProfileInfo {
+  full_name: string | null;
+  avatar_url: string | null;
+}
+
 const Profile = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
-  const [fullName, setFullName] = useState<string | null>(null);
+  const [profileInfo, setProfileInfo] = useState<ProfileInfo>({ full_name: null, avatar_url: null });
 
   useEffect(() => {
     const fetchProfile = async () => {
       if (!user) return;
       const { data } = await supabase
         .from('profiles')
-        .select('full_name')
+        .select('full_name, avatar_url')
         .eq('user_id', user.id)
         .single();
-      if (data?.full_name) {
-        setFullName(data.full_name);
+      if (data) {
+        setProfileInfo(data);
       }
     };
     fetchProfile();
@@ -32,7 +37,7 @@ const Profile = () => {
   };
 
   const menuItems = [
-    { label: 'Edit Profile', path: '#' },
+    { label: 'Edit Profile', path: '/edit-profile' },
     { label: 'Nutrition Goals', path: '/nutrition-goals' },
     { label: 'Notifications', path: '/notifications' },
     { label: 'Subscription', path: '#' },
@@ -46,11 +51,15 @@ const Profile = () => {
         <h1 className="text-xl font-bold mb-6">Settings</h1>
 
         <div className="bg-card rounded-2xl p-4 shadow-soft mb-6 flex items-center gap-4">
-          <div className="w-16 h-16 rounded-full bg-secondary flex items-center justify-center">
-            <User className="w-8 h-8 text-muted-foreground" />
+          <div className="w-16 h-16 rounded-full bg-secondary flex items-center justify-center overflow-hidden">
+            {profileInfo.avatar_url ? (
+              <img src={profileInfo.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+            ) : (
+              <User className="w-8 h-8 text-muted-foreground" />
+            )}
           </div>
           <div>
-            <p className="font-semibold">{fullName || 'User'}</p>
+            <p className="font-semibold">{profileInfo.full_name || 'User'}</p>
             <p className="text-sm text-muted-foreground">{user?.email || 'Guest'}</p>
           </div>
         </div>
