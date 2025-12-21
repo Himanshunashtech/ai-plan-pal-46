@@ -6,7 +6,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Mail, Lock, Eye, EyeOff, Phone } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import alleAiLogo from '@/assets/alle-ai-logo.png';
+import AccountRecoveryDialog from '@/components/auth/AccountRecoveryDialog';
 
 type AuthMode = 'login' | 'signup';
 
@@ -22,6 +24,12 @@ const Auth = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  
+  // Account recovery state
+  const [showRecoveryDialog, setShowRecoveryDialog] = useState(false);
+  const [deletionDate, setDeletionDate] = useState<string>('');
+  const [pendingUserId, setPendingUserId] = useState<string>('');
+  const [isRestoring, setIsRestoring] = useState(false);
 
   useEffect(() => {
     const modeParam = searchParams.get('mode');
@@ -29,6 +37,67 @@ const Auth = () => {
       setMode('signup');
     }
   }, [searchParams]);
+
+  const checkScheduledDeletion = async (userId: string): Promise<string | null> => {
+    const { data } = await supabase
+      .from('profiles')
+      .select('scheduled_deletion_at')
+      .eq('user_id', userId)
+      .single();
+    
+    return data?.scheduled_deletion_at || null;
+  };
+
+  const handleKeepAccount = async () => {
+    if (!pendingUserId) return;
+    
+    setIsRestoring(true);
+    try {
+      // Clear the scheduled deletion
+      const { error } = await supabase
+        .from('profiles')
+        .update({ scheduled_deletion_at: null })
+        .eq('user_id', pendingUserId);
+      
+      if (error) throw error;
+      
+      // Send restoration email
+      try {
+        await supabase.functions.invoke('send-notification-email', {
+          body: {
+            type: 'account_restored',
+            userId: pendingUserId
+          }
+        });
+      } catch (emailError) {
+        console.log('Email notification not sent');
+      }
+      
+      toast({
+        title: "Account Restored!",
+        description: "Your account has been restored successfully.",
+      });
+      
+      setShowRecoveryDialog(false);
+      navigate('/dashboard');
+    } catch (error: any) {
+      console.error('Error restoring account:', error);
+      toast({
+        title: "Restoration Failed",
+        description: error.message || "Failed to restore account",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRestoring(false);
+    }
+  };
+
+  const handleGoBack = async () => {
+    await supabase.auth.signOut();
+    setShowRecoveryDialog(false);
+    setPendingUserId('');
+    setDeletionDate('');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,6 +113,17 @@ const Auth = () => {
             variant: "destructive",
           });
         } else {
+          // Check for scheduled deletion
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            const scheduledDeletion = await checkScheduledDeletion(user.id);
+            if (scheduledDeletion) {
+              setPendingUserId(user.id);
+              setDeletionDate(scheduledDeletion);
+              setShowRecoveryDialog(true);
+              return;
+            }
+          }
           navigate('/dashboard');
         }
       } else {
@@ -103,6 +183,14 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col safe-area-top safe-area-bottom">
+      <AccountRecoveryDialog
+        open={showRecoveryDialog}
+        deletionDate={deletionDate}
+        onKeepAccount={handleKeepAccount}
+        onGoBack={handleGoBack}
+        isLoading={isRestoring}
+      />
+      
       <div className="flex-1 flex flex-col px-6 py-8">
         {/* Header */}
         <div className="flex flex-col items-center mb-10 animate-fade-in">

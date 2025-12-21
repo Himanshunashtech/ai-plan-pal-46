@@ -237,6 +237,7 @@ export type Database = {
           motivation: string[] | null
           onboarding_completed: boolean | null
           previous_diets: boolean | null
+          scheduled_deletion_at: string | null
           sleep_hours: number | null
           snacking: string | null
           stress_level: string | null
@@ -280,6 +281,7 @@ export type Database = {
           motivation?: string[] | null
           onboarding_completed?: boolean | null
           previous_diets?: boolean | null
+          scheduled_deletion_at?: string | null
           sleep_hours?: number | null
           snacking?: string | null
           stress_level?: string | null
@@ -323,6 +325,7 @@ export type Database = {
           motivation?: string[] | null
           onboarding_completed?: boolean | null
           previous_diets?: boolean | null
+          scheduled_deletion_at?: string | null
           sleep_hours?: number | null
           snacking?: string | null
           stress_level?: string | null

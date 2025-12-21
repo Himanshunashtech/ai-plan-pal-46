@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import DeleteAccountDialog from '@/components/profile/DeleteAccountDialog';
 
 interface ProfileInfo {
   full_name: string | null;
@@ -34,6 +35,10 @@ const Profile = () => {
   const handleSignOut = async () => {
     await signOut();
     navigate('/auth');
+  };
+
+  const handleAccountDeleted = () => {
+    navigate('/welcome');
   };
 
   const menuItems = [
@@ -88,6 +93,10 @@ const Profile = () => {
           <LogOut className="w-5 h-5 mr-2" />
           Sign Out
         </Button>
+
+        <div className="mt-4">
+          <DeleteAccountDialog onDeleted={handleAccountDeleted} />
+        </div>
       </div>
 
       <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border safe-area-bottom">
