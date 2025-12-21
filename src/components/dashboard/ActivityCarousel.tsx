@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { Footprints, Flame, Droplet, Plus, Minus, Settings } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useBadges } from '@/hooks/useBadges';
+import { hasLoggedWaterBefore } from '@/lib/badge-triggers';
 import NutritionRing from '@/components/ui/NutritionRing';
 import HealthConnectWidget from '@/components/dashboard/HealthConnectWidget';
 
@@ -52,6 +54,7 @@ interface DailyLog {
 
 const ActivityCarousel = ({ selectedDate, onDataChange, nutritionData }: ActivityCarouselProps) => {
   const { user } = useAuth();
+  const { earnBadge, hasBadge } = useBadges();
   const [currentSlide, setCurrentSlide] = useState(0);
   const [dailyLog, setDailyLog] = useState<DailyLog>({
     steps: 0,
@@ -61,6 +64,7 @@ const ActivityCarousel = ({ selectedDate, onDataChange, nutritionData }: Activit
   const [loading, setLoading] = useState(false);
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
+  const [hasLoggedWater, setHasLoggedWater] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const stepsGoal = 10000;
@@ -72,6 +76,8 @@ const ActivityCarousel = ({ selectedDate, onDataChange, nutritionData }: Activit
   useEffect(() => {
     if (user) {
       fetchDailyLog();
+      // Check if user has logged water before for badge
+      hasLoggedWaterBefore(user.id).then(setHasLoggedWater);
     }
   }, [user, selectedDate]);
 
@@ -159,9 +165,16 @@ const ActivityCarousel = ({ selectedDate, onDataChange, nutritionData }: Activit
     }
   };
 
-  const adjustWater = (change: number) => {
+  const adjustWater = async (change: number) => {
+    const wasZero = dailyLog.water_intake === 0;
     const newIntake = Math.max(0, dailyLog.water_intake + change);
     updateDailyLog({ water_intake: newIntake });
+
+    // Award hydrated badge on first water log ever
+    if (change > 0 && wasZero && !hasLoggedWater && !hasBadge('hydrated')) {
+      await earnBadge('hydrated');
+      setHasLoggedWater(true);
+    }
   };
 
   const onTouchStart = (e: React.TouchEvent) => {
