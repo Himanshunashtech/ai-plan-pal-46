@@ -12,7 +12,7 @@ const OnboardingSteps = () => {
   const [isGenerating, setIsGenerating] = useState(false);
 
   const handleNext = () => {
-    if (step === 25) {
+    if (step === 27) {
       generatePlan();
     } else {
       nextStep();
@@ -70,7 +70,26 @@ const OnboardingSteps = () => {
         return (
           <div className="animate-fade-in flex flex-col h-full">
             <div className="flex-1">
-              <h2 className="text-2xl font-bold mb-2 text-foreground">Choose your Gender</h2>
+              <span className="text-xs font-medium text-primary uppercase tracking-wide">Step 1 • Let's get started</span>
+              <h2 className="text-2xl font-bold mb-2 mt-2 text-foreground">What's your name?</h2>
+              <p className="text-muted-foreground mb-8">We'd love to get to know you better.</p>
+              <Input
+                placeholder="Enter your name"
+                value={data.fullName || ''}
+                onChange={(e) => updateData({ fullName: e.target.value })}
+                className="h-14 text-lg rounded-2xl"
+                autoFocus
+              />
+            </div>
+          </div>
+        );
+
+      case 2:
+        return (
+          <div className="animate-fade-in flex flex-col h-full">
+            <div className="flex-1">
+              <span className="text-xs font-medium text-primary uppercase tracking-wide">Step 2 • Basic Info</span>
+              <h2 className="text-2xl font-bold mb-2 mt-2 text-foreground">Choose your Gender</h2>
               <p className="text-muted-foreground mb-8">This will be used to calibrate your custom plan.</p>
               <div className="space-y-3">
                 {[
@@ -95,7 +114,7 @@ const OnboardingSteps = () => {
           </div>
         );
 
-      case 2:
+      case 3:
         return (
           <div className="animate-fade-in flex flex-col h-full">
             <div className="flex-1">
@@ -120,7 +139,7 @@ const OnboardingSteps = () => {
           </div>
         );
 
-      case 3:
+      case 4:
         return (
           <div className="animate-fade-in flex flex-col h-full">
             <div className="flex-1">
@@ -160,7 +179,7 @@ const OnboardingSteps = () => {
           </div>
         );
 
-      case 4:
+      case 6:
         return (
           <div className="animate-fade-in flex flex-col h-full">
             <div className="flex-1">
@@ -200,7 +219,7 @@ const OnboardingSteps = () => {
           </div>
         );
 
-      case 5:
+      case 7:
         return (
           <div className="animate-fade-in flex flex-col h-full">
             <div className="flex-1">
@@ -228,7 +247,7 @@ const OnboardingSteps = () => {
           </div>
         );
 
-      case 6:
+      case 8:
         return (
           <div className="animate-fade-in flex flex-col h-full">
             <div className="flex-1">
@@ -252,7 +271,7 @@ const OnboardingSteps = () => {
           </div>
         );
 
-      case 7:
+      case 9:
         return (
           <div className="animate-fade-in flex flex-col h-full">
             <div className="flex-1">
@@ -282,7 +301,7 @@ const OnboardingSteps = () => {
           </div>
         );
 
-      case 8:
+      case 10:
         return (
           <div className="animate-fade-in flex flex-col h-full">
             <div className="flex-1">
@@ -311,7 +330,7 @@ const OnboardingSteps = () => {
           </div>
         );
 
-      case 9:
+      case 11:
         return (
           <div className="animate-fade-in flex flex-col h-full">
             <div className="flex-1">
@@ -340,7 +359,7 @@ const OnboardingSteps = () => {
           </div>
         );
 
-      case 10:
+      case 12:
         return (
           <div className="animate-fade-in flex flex-col h-full">
             <div className="flex-1">
@@ -379,7 +398,7 @@ const OnboardingSteps = () => {
           </div>
         );
 
-      case 11:
+      case 13:
         return (
           <div className="animate-fade-in flex flex-col h-full">
             <div className="flex-1">
@@ -404,7 +423,7 @@ const OnboardingSteps = () => {
           </div>
         );
 
-      case 12:
+      case 14:
         return (
           <div className="animate-fade-in flex flex-col h-full">
             <div className="flex-1">
@@ -428,7 +447,7 @@ const OnboardingSteps = () => {
           </div>
         );
 
-      case 13:
+      case 15:
         return (
           <div className="animate-fade-in flex flex-col h-full">
             <div className="flex-1">
@@ -452,7 +471,7 @@ const OnboardingSteps = () => {
           </div>
         );
 
-      case 14:
+      case 16:
         return (
           <div className="animate-fade-in flex flex-col h-full">
             <div className="flex-1">
@@ -480,7 +499,7 @@ const OnboardingSteps = () => {
           </div>
         );
 
-      case 15:
+      case 17:
         return (
           <div className="animate-fade-in flex flex-col h-full">
             <div className="flex-1">
@@ -514,7 +533,7 @@ const OnboardingSteps = () => {
           </div>
         );
 
-      case 16:
+      case 18:
         return (
           <div className="animate-fade-in flex flex-col h-full">
             <div className="flex-1">
@@ -540,7 +559,7 @@ const OnboardingSteps = () => {
           </div>
         );
 
-      case 17:
+      case 19:
         return (
           <div className="animate-fade-in flex flex-col h-full">
             <div className="flex-1">
@@ -568,7 +587,7 @@ const OnboardingSteps = () => {
           </div>
         );
 
-      case 18:
+      case 20:
         return (
           <div className="animate-fade-in flex flex-col h-full">
             <div className="flex-1">
@@ -596,7 +615,7 @@ const OnboardingSteps = () => {
           </div>
         );
 
-      case 19:
+      case 21:
         return (
           <div className="animate-fade-in flex flex-col h-full">
             <div className="flex-1">
@@ -620,7 +639,7 @@ const OnboardingSteps = () => {
           </div>
         );
 
-      case 20:
+      case 22:
         return (
           <div className="animate-fade-in flex flex-col h-full">
             <div className="flex-1">
@@ -659,7 +678,7 @@ const OnboardingSteps = () => {
           </div>
         );
 
-      case 21:
+      case 23:
         return (
           <div className="animate-fade-in flex flex-col h-full">
             <div className="flex-1">
@@ -698,7 +717,7 @@ const OnboardingSteps = () => {
           </div>
         );
 
-      case 22:
+      case 24:
         return (
           <div className="animate-fade-in flex flex-col h-full">
             <div className="flex-1">
@@ -724,7 +743,7 @@ const OnboardingSteps = () => {
           </div>
         );
 
-      case 23:
+      case 25:
         return (
           <div className="animate-fade-in flex flex-col h-full">
             <div className="flex-1">
@@ -757,7 +776,7 @@ const OnboardingSteps = () => {
           </div>
         );
 
-      case 24:
+      case 26:
         return (
           <div className="animate-fade-in flex flex-col h-full">
             <div className="flex-1 flex flex-col items-center justify-center text-center">
@@ -786,7 +805,7 @@ const OnboardingSteps = () => {
           </div>
         );
 
-      case 25:
+      case 27:
         return (
           <div className="animate-fade-in flex flex-col h-full">
             <div className="flex-1 flex flex-col items-center justify-center text-center">
@@ -834,7 +853,7 @@ const OnboardingSteps = () => {
             <Loader2 className="w-5 h-5 mr-2 animate-spin" />
             Generating Plan...
           </>
-        ) : step === 25 ? (
+        ) : step === 27 ? (
           'Generate My Plan'
         ) : (
           'Next'

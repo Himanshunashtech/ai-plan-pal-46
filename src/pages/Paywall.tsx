@@ -35,6 +35,7 @@ const Paywall = () => {
         .from('profiles')
         .upsert({
           user_id: user.id,
+          full_name: data.fullName,
           gender: data.gender,
           age: data.age,
           height: data.height,
