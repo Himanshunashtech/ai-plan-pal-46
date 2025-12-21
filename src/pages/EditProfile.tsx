@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Camera, User } from 'lucide-react';
+import { ArrowLeft, Camera, User, Lock, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -44,6 +44,16 @@ const EditProfile = () => {
   const [imageToCrop, setImageToCrop] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [newAvatarBlob, setNewAvatarBlob] = useState<Blob | null>(null);
+  
+  // Password change state
+  const [showPasswordSection, setShowPasswordSection] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -82,6 +92,55 @@ const EditProfile = () => {
     setNewAvatarBlob(croppedBlob);
     setPreviewUrl(URL.createObjectURL(croppedBlob));
     setImageToCrop(null);
+  };
+
+  const handlePasswordChange = async () => {
+    if (!newPassword || !confirmPassword) {
+      toast.error('Please fill in all password fields');
+      return;
+    }
+    
+    if (newPassword !== confirmPassword) {
+      toast.error('New passwords do not match');
+      return;
+    }
+    
+    if (newPassword.length < 6) {
+      toast.error('Password must be at least 6 characters');
+      return;
+    }
+    
+    setChangingPassword(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+      
+      if (error) throw error;
+      
+      toast.success('Password updated successfully');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setShowPasswordSection(false);
+      
+      // Send notification email about password change
+      try {
+        await supabase.functions.invoke('send-notification-email', {
+          body: {
+            type: 'password_changed',
+            userId: user?.id
+          }
+        });
+      } catch (emailError) {
+        console.log('Email notification not sent (API key may not be configured)');
+      }
+    } catch (error: any) {
+      console.error('Error changing password:', error);
+      toast.error(error.message || 'Failed to change password');
+    } finally {
+      setChangingPassword(false);
+    }
   };
 
   const handleSave = async () => {
@@ -128,6 +187,18 @@ const EditProfile = () => {
         .eq('user_id', user.id);
       
       if (error) throw error;
+      
+      // Send notification email about profile update
+      try {
+        await supabase.functions.invoke('send-notification-email', {
+          body: {
+            type: 'profile_updated',
+            userId: user.id
+          }
+        });
+      } catch (emailError) {
+        console.log('Email notification not sent (API key may not be configured)');
+      }
       
       toast.success('Profile updated successfully');
       navigate('/profile');
@@ -315,6 +386,72 @@ const EditProfile = () => {
                 <SelectItem value="extremely_active">Extremely Active</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Password Change Section */}
+          <div className="pt-4 border-t border-border">
+            <button
+              type="button"
+              className="flex items-center gap-2 text-primary font-medium"
+              onClick={() => setShowPasswordSection(!showPasswordSection)}
+            >
+              <Lock className="w-4 h-4" />
+              {showPasswordSection ? 'Cancel Password Change' : 'Change Password'}
+            </button>
+            
+            {showPasswordSection && (
+              <div className="mt-4 space-y-4 p-4 bg-secondary/50 rounded-lg">
+                <div>
+                  <Label htmlFor="newPassword">New Password</Label>
+                  <div className="relative mt-1.5">
+                    <Input
+                      id="newPassword"
+                      type={showNewPassword ? 'text' : 'password'}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="Enter new password"
+                    />
+                    <button
+                      type="button"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                    >
+                      {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+                
+                <div>
+                  <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                  <div className="relative mt-1.5">
+                    <Input
+                      id="confirmPassword"
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Confirm new password"
+                    />
+                    <button
+                      type="button"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    >
+                      {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+                
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="w-full"
+                  onClick={handlePasswordChange}
+                  disabled={changingPassword}
+                >
+                  {changingPassword ? 'Updating...' : 'Update Password'}
+                </Button>
+              </div>
+            )}
           </div>
         </div>
 
