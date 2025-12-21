@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 interface EmailRequest {
-  type: 'profile_updated' | 'password_changed' | 'weekly_summary';
+  type: 'profile_updated' | 'password_changed' | 'weekly_summary' | 'deletion_scheduled' | 'account_restored';
   userId: string;
 }
 
@@ -52,11 +52,12 @@ serve(async (req) => {
     // Get user profile for personalization
     const { data: profile } = await supabase
       .from('profiles')
-      .select('full_name')
+      .select('full_name, scheduled_deletion_at')
       .eq('user_id', userId)
       .single();
     
     const userName = profile?.full_name || 'there';
+    const deletionDate = profile?.scheduled_deletion_at;
 
     let subject = '';
     let htmlContent = '';
@@ -134,6 +135,37 @@ serve(async (req) => {
             </div>
             
             <p>Keep up the great work! Consistency is key to reaching your health goals.</p>
+            <p style="margin-top: 30px; color: #666;">Best regards,<br>The Alle AI Team</p>
+          </div>
+        `;
+        break;
+        
+      case 'deletion_scheduled':
+        const formattedDeletionDate = deletionDate 
+          ? new Date(deletionDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+          : '30 days from now';
+        
+        subject = 'Account Deletion Scheduled';
+        htmlContent = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #ef4444;">Account Scheduled for Deletion</h2>
+            <p>Hi ${userName},</p>
+            <p>Your account has been scheduled for deletion on <strong>${formattedDeletionDate}</strong>.</p>
+            <p>If you change your mind, simply log back in before this date and you'll be given the option to keep your account and all your data.</p>
+            <p>After this date, all your data will be permanently deleted and cannot be recovered.</p>
+            <p style="margin-top: 30px; color: #666;">Best regards,<br>The Alle AI Team</p>
+          </div>
+        `;
+        break;
+        
+      case 'account_restored':
+        subject = 'Account Restored Successfully';
+        htmlContent = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #10b981;">Welcome Back!</h2>
+            <p>Hi ${userName},</p>
+            <p>Great news! Your account has been restored and the scheduled deletion has been cancelled.</p>
+            <p>All your data is safe and you can continue using Alle AI as before.</p>
             <p style="margin-top: 30px; color: #666;">Best regards,<br>The Alle AI Team</p>
           </div>
         `;
