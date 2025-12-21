@@ -1,12 +1,16 @@
 import { useEffect, useState } from 'react';
 import { Home, BarChart3, Scan, User, ChevronLeft, ChevronRight, X, Flame, Beef, Wheat, Droplets, Heart } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { NotificationCenter } from '@/components/notifications/NotificationCenter';
+import { StreakIcon } from '@/components/dashboard/StreakIcon';
+import { StreakShareSheet } from '@/components/badges/StreakShareSheet';
+import { BadgeCelebration } from '@/components/badges/BadgeCelebration';
 import NutritionRing from '@/components/ui/NutritionRing';
 import ActivityCarousel from '@/components/dashboard/ActivityCarousel';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useBadges } from '@/hooks/useBadges';
 import { format, startOfDay, endOfDay, subDays, addDays, isSameDay } from 'date-fns';
 import { useSwipe } from '@/hooks/useSwipe';
 
@@ -86,7 +90,9 @@ const getHealthScoreLabel = (score: number): string => {
 
 const Dashboard = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { user } = useAuth();
+  const { newlyUnlockedBadge, clearNewlyUnlockedBadge } = useBadges();
   const [recentFoods, setRecentFoods] = useState<FoodEntry[]>([]);
   const [dailyTotals, setDailyTotals] = useState<DailyTotals>({ 
     calories: 0, protein: 0, carbs: 0, fats: 0, fiber: 0, sugar: 0, sodium: 0 
@@ -100,6 +106,7 @@ const Dashboard = () => {
   const [weekOffset, setWeekOffset] = useState(0);
   const [selectedFood, setSelectedFood] = useState<FoodEntry | null>(null);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showStreakSheet, setShowStreakSheet] = useState(false);
   const today = new Date();
   const weekStart = subDays(today, 6 + weekOffset * 7);
   const weekDates = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
@@ -201,7 +208,10 @@ const Dashboard = () => {
             <span className="text-xl">🔥</span>
             <span className="font-bold text-lg">Cal AI</span>
           </div>
-          <NotificationBell onClick={() => setShowNotifications(true)} />
+          <div className="flex items-center gap-1">
+            <StreakIcon onClick={() => setShowStreakSheet(true)} />
+            <NotificationBell onClick={() => setShowNotifications(true)} />
+          </div>
         </div>
 
         {/* Week Navigation */}
@@ -425,6 +435,24 @@ const Dashboard = () => {
         isOpen={showNotifications} 
         onClose={() => setShowNotifications(false)} 
       />
+
+      {/* Streak Share Sheet */}
+      <StreakShareSheet
+        isOpen={showStreakSheet}
+        onClose={() => setShowStreakSheet(false)}
+      />
+
+      {/* Badge Celebration */}
+      {newlyUnlockedBadge && (
+        <BadgeCelebration
+          badge={newlyUnlockedBadge}
+          onClose={clearNewlyUnlockedBadge}
+          onViewAll={() => {
+            clearNewlyUnlockedBadge();
+            navigate('/milestones');
+          }}
+        />
+      )}
 
       <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border safe-area-bottom">
         <div className="flex justify-around py-3">
