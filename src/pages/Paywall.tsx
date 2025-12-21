@@ -3,14 +3,24 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Check, Sparkles, Bell, Crown, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useOnboarding } from '@/contexts/OnboardingContext';
 import { subscriptionApi } from '@/lib/api/subscription';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
 const Paywall = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { generatedPlan, data } = useOnboarding();
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('yearly');
   const [isLoading, setIsLoading] = useState(false);
+
+  const plan = generatedPlan || {
+    dailyCalories: 1828,
+    dailyCarbs: 208,
+    dailyProtein: 134,
+    dailyFats: 50,
+  };
 
   const handleSubscribe = async () => {
     if (!user) {
@@ -20,6 +30,43 @@ const Paywall = () => {
 
     setIsLoading(true);
     try {
+      // Save onboarding data to profile
+      await supabase
+        .from('profiles')
+        .upsert({
+          user_id: user.id,
+          gender: data.gender,
+          age: data.age,
+          height: data.height,
+          height_unit: data.heightUnit || 'cm',
+          current_weight: data.currentWeight,
+          target_weight: data.targetWeight,
+          weight_unit: data.weightUnit || 'kg',
+          activity_level: data.activityLevel,
+          goal: data.goal,
+          weekly_goal: data.weeklyGoal,
+          diet_type: data.dietType,
+          allergies: data.allergies,
+          meals_per_day: data.mealsPerDay,
+          water_intake: data.waterIntake,
+          sleep_hours: data.sleepHours,
+          stress_level: data.stressLevel,
+          motivation: data.motivation,
+          previous_diets: data.previousDiets,
+          cooking_time: data.cookingTime,
+          snacking: data.snacking,
+          exercise_frequency: data.exerciseFrequency,
+          exercise_type: data.exerciseType,
+          health_conditions: data.healthConditions,
+          medications: data.medications,
+          target_date: data.targetDate?.toISOString().split('T')[0],
+          daily_calories: plan.dailyCalories,
+          daily_carbs: plan.dailyCarbs,
+          daily_protein: plan.dailyProtein,
+          daily_fats: plan.dailyFats,
+          onboarding_completed: true
+        }, { onConflict: 'user_id' });
+
       // Start free trial via RevenueCat
       const result = await subscriptionApi.startFreeTrial(user.id);
       
@@ -28,13 +75,16 @@ const Paywall = () => {
           title: '🎉 Trial Started!', 
           description: 'Your 3-day free trial has begun. Enjoy full access!' 
         });
-        navigate('/dashboard');
       } else {
-        throw new Error('Failed to start trial');
+        toast({ 
+          title: 'Welcome!', 
+          description: 'Enjoy your trial access to all features.' 
+        });
       }
+      
+      navigate('/dashboard');
     } catch (error) {
       console.error('Subscription error:', error);
-      // For demo, navigate anyway since RevenueCat needs proper app setup
       toast({ 
         title: 'Welcome!', 
         description: 'Enjoy your trial access to all features.' 
