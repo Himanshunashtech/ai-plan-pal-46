@@ -797,18 +797,21 @@ const OnboardingSteps = () => {
                   { months: 6, label: '6 months' },
                   { months: 12, label: '1 year' }
                 ].map((t) => {
-                  const targetDate = new Date();
-                  targetDate.setMonth(targetDate.getMonth() + t.months);
-                  const isSelected = data.targetDate?.getTime() === targetDate.getTime();
+                  const isSelected = data.targetMonths === t.months;
                   return (
                     <Button
                       key={t.months}
                       variant={isSelected ? 'option-selected' : 'option'}
                       size="lg"
                       className="w-full"
-                      onClick={() => updateData({ targetDate })}
+                      onClick={() => {
+                        const targetDate = new Date();
+                        targetDate.setMonth(targetDate.getMonth() + t.months);
+                        updateData({ targetMonths: t.months, targetDate: targetDate.toISOString().split('T')[0] });
+                      }}
                     >
                       {t.label}
+                      {isSelected && <Check className="w-5 h-5 ml-auto" />}
                     </Button>
                   );
                 })}
