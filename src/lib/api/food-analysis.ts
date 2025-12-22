@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import { checkMealBadges } from '@/lib/badge-triggers';
+import { checkMealBadges, updateUserStreak } from '@/lib/badge-triggers';
 
 export interface FoodItem {
   name: string;
@@ -42,7 +42,7 @@ export async function analyzeFood(imageBase64: string): Promise<FoodAnalysisResu
 
 export interface SaveFoodResult {
   entry: any;
-  earnedBadgeId: string | null;
+  earnedBadgeIds: string[];
 }
 
 export async function saveFoodEntry(
@@ -72,10 +72,17 @@ export async function saveFoodEntry(
 
   if (error) throw error;
 
-  // Check for meal badges
-  const earnedBadgeId = await checkMealBadges(userId);
+  const earnedBadgeIds: string[] = [];
 
-  return { entry: data, earnedBadgeId };
+  // Check for meal badges
+  const mealBadgeId = await checkMealBadges(userId);
+  if (mealBadgeId) earnedBadgeIds.push(mealBadgeId);
+
+  // Update streak and check for streak badges
+  const { earnedBadgeId: streakBadgeId } = await updateUserStreak(userId);
+  if (streakBadgeId) earnedBadgeIds.push(streakBadgeId);
+
+  return { entry: data, earnedBadgeIds };
 }
 
 export async function uploadFoodImage(userId: string, imageBase64: string): Promise<string> {

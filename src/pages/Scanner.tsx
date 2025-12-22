@@ -36,14 +36,17 @@ const Scanner = () => {
 
     try {
       const imageUrl = await uploadFoodImage(user.id, imageBase64);
-      const { earnedBadgeId: badgeId } = await saveFoodEntry(user.id, result, imageUrl);
+      const { earnedBadgeIds } = await saveFoodEntry(user.id, result, imageUrl);
       toast({ title: 'Success!', description: `${result.foodName} logged - ${result.totalNutrition.calories} calories` });
 
-      // Check and award meal badges
-      if (badgeId && !hasBadge(badgeId)) {
-        const awarded = await earnBadge(badgeId);
-        if (awarded) {
-          setEarnedBadgeId(badgeId);
+      // Check and award badges (meal + streak)
+      for (const badgeId of earnedBadgeIds) {
+        if (!hasBadge(badgeId)) {
+          const awarded = await earnBadge(badgeId);
+          if (awarded) {
+            setEarnedBadgeId(badgeId);
+            break; // Show one badge celebration at a time
+          }
         }
       }
     } catch (error) {

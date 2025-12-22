@@ -1,4 +1,4 @@
-import { Home, BarChart3, Scan, User, ChevronRight, LogOut } from 'lucide-react';
+import { Home, BarChart3, Scan, User, ChevronRight, LogOut, Trophy } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -42,13 +42,14 @@ const Profile = () => {
   };
 
   const menuItems = [
-    { label: 'Edit Profile', path: '/edit-profile' },
-    { label: 'Nutrition Goals', path: '/nutrition-goals' },
-    { label: 'Notifications', path: '/notifications' },
-    { label: 'Email Preferences', path: '/email-preferences' },
-    { label: 'Subscription', path: '#' },
-    { label: 'Help & Support', path: '#' },
-    { label: 'Privacy Policy', path: '#' },
+    { label: 'Edit Profile', path: '/edit-profile', icon: null },
+    { label: 'Milestones & Badges', path: '/milestones', icon: Trophy },
+    { label: 'Nutrition Goals', path: '/nutrition-goals', icon: null },
+    { label: 'Notifications', path: '/notifications', icon: null },
+    { label: 'Email Preferences', path: '/email-preferences', icon: null },
+    { label: 'Subscription', path: '#', icon: null },
+    { label: 'Help & Support', path: '#', icon: null },
+    { label: 'Privacy Policy', path: '#', icon: null },
   ];
 
   return (
@@ -79,7 +80,10 @@ const Profile = () => {
                 i !== menuItems.length - 1 ? 'border-b border-border' : ''
               }`}
             >
-              <span>{item.label}</span>
+              <div className="flex items-center gap-3">
+                {item.icon && <item.icon className="w-5 h-5 text-amber-500" />}
+                <span>{item.label}</span>
+              </div>
               <ChevronRight className="w-5 h-5 text-muted-foreground" />
             </Link>
           ))}
