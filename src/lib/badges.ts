@@ -27,6 +27,9 @@ export const BADGES: Badge[] = [
   { id: 'one_hit_wonder', name: 'One Hit Wonder', description: 'Hit daily calorie goal once', category: 'goals', icon: '🎯', requirement: 1 },
   { id: 'loyalty_iii', name: 'Loyalty III', description: 'Hit calorie goal 7 days', category: 'goals', icon: '🏆', requirement: 7 },
   { id: 'bullseye', name: 'Bullseye', description: 'Hit calorie goal 30 days', category: 'goals', icon: '🎯', requirement: 30 },
+  { id: 'macro_master', name: 'Macro Master', description: 'Hit all macro goals in a day', category: 'goals', icon: '💪', requirement: 1 },
+  { id: 'protein_pro', name: 'Protein Pro', description: 'Hit protein goal 7 days', category: 'goals', icon: '🥩', requirement: 7 },
+  { id: 'balanced_diet', name: 'Balanced Diet', description: 'Hit all goals 7 days', category: 'goals', icon: '⚖️', requirement: 7 },
 
   // Social badges
   { id: 'helping_hand', name: 'Helping Hand', description: 'Invited 1 friend', category: 'social', icon: '🤝', requirement: 1 },

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Badge, BADGES, getBadgeById } from '@/lib/badges';
+import { sendBadgeNotification } from '@/lib/badge-triggers';
 
 export interface EarnedBadge extends Badge {
   earnedAt: string;
@@ -74,6 +75,9 @@ export function useBadges() {
 
       setEarnedBadges(prev => [earnedBadge, ...prev]);
       setNewlyUnlockedBadge(badge);
+
+      // Send push notification for badge unlock
+      sendBadgeNotification(user.id, badge.name, badge.icon);
 
       return true;
     } catch (error) {

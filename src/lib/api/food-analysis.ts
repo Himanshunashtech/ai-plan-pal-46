@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import { checkMealBadges, updateUserStreak } from '@/lib/badge-triggers';
+import { checkMealBadges, updateUserStreak, checkGoalBadges } from '@/lib/badge-triggers';
 
 export interface FoodItem {
   name: string;
@@ -81,6 +81,10 @@ export async function saveFoodEntry(
   // Update streak and check for streak badges
   const { earnedBadgeId: streakBadgeId } = await updateUserStreak(userId);
   if (streakBadgeId) earnedBadgeIds.push(streakBadgeId);
+
+  // Check for goal achievement badges
+  const goalBadges = await checkGoalBadges(userId);
+  earnedBadgeIds.push(...goalBadges);
 
   return { entry: data, earnedBadgeIds };
 }
