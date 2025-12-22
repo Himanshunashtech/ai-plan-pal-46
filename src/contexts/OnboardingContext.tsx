@@ -49,6 +49,7 @@ interface OnboardingContextType {
   prevStep: () => void;
   updateData: (newData: Partial<OnboardingData>) => void;
   setGeneratedPlan: (plan: GeneratedPlan) => void;
+  updateGeneratedPlan: (updates: Partial<GeneratedPlan>) => void;
   resetOnboarding: () => void;
 }
 
@@ -105,6 +106,10 @@ export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children
     setData(prev => ({ ...prev, ...newData }));
   };
 
+  const updateGeneratedPlan = (updates: Partial<GeneratedPlan>) => {
+    setGeneratedPlan(prev => prev ? { ...prev, ...updates } : null);
+  };
+
   const resetOnboarding = () => {
     setStep(1);
     setData({});
@@ -123,6 +128,7 @@ export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children
       prevStep,
       updateData,
       setGeneratedPlan,
+      updateGeneratedPlan,
       resetOnboarding
     }}>
       {children}
