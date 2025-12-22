@@ -179,6 +179,47 @@ const OnboardingSteps = () => {
           </div>
         );
 
+      case 5:
+        return (
+          <div className="animate-fade-in flex flex-col h-full">
+            <div className="flex-1">
+              <h2 className="text-2xl font-bold mb-2 text-foreground">What motivates you?</h2>
+              <p className="text-muted-foreground mb-8">Select all that apply to you.</p>
+              <div className="space-y-3">
+                {[
+                  { value: 'health', label: 'Improve overall health', icon: '❤️' },
+                  { value: 'energy', label: 'Have more energy', icon: '⚡' },
+                  { value: 'confidence', label: 'Feel more confident', icon: '💪' },
+                  { value: 'fitness', label: 'Get in better shape', icon: '🏃' },
+                  { value: 'longevity', label: 'Live a longer life', icon: '🌟' }
+                ].map((m) => {
+                  const isSelected = data.motivation?.includes(m.value);
+                  return (
+                    <Button
+                      key={m.value}
+                      variant={isSelected ? 'option-selected' : 'option'}
+                      size="lg"
+                      className="w-full justify-start gap-3"
+                      onClick={() => {
+                        const current = data.motivation || [];
+                        if (isSelected) {
+                          updateData({ motivation: current.filter((v: string) => v !== m.value) });
+                        } else {
+                          updateData({ motivation: [...current, m.value] });
+                        }
+                      }}
+                    >
+                      <span>{m.icon}</span>
+                      {m.label}
+                      {isSelected && <Check className="w-5 h-5 ml-auto" />}
+                    </Button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        );
+
       case 6:
         return (
           <div className="animate-fade-in flex flex-col h-full">
@@ -841,24 +882,26 @@ const OnboardingSteps = () => {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex-1 overflow-y-auto">{renderStep()}</div>
-      <Button 
-        size="lg" 
-        className="w-full mt-6" 
-        onClick={handleNext}
-        disabled={isGenerating}
-      >
-        {isGenerating ? (
-          <>
-            <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-            Generating Plan...
-          </>
-        ) : step === 27 ? (
-          'Generate My Plan'
-        ) : (
-          'Next'
-        )}
-      </Button>
+      <div className="flex-1 overflow-y-auto pb-4">{renderStep()}</div>
+      <div className="flex-shrink-0 pt-4 pb-safe bg-background">
+        <Button 
+          size="lg" 
+          className="w-full" 
+          onClick={handleNext}
+          disabled={isGenerating}
+        >
+          {isGenerating ? (
+            <>
+              <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+              Generating Plan...
+            </>
+          ) : step === 27 ? (
+            'Generate My Plan'
+          ) : (
+            'Next'
+          )}
+        </Button>
+      </div>
     </div>
   );
 };

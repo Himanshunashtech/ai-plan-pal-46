@@ -17,8 +17,8 @@ const Onboarding = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col safe-area-top safe-area-bottom">
-      <div className="flex items-center justify-between px-4 py-4">
+    <div className="min-h-screen bg-background flex flex-col safe-area-top">
+      <div className="flex items-center justify-between px-4 py-4 flex-shrink-0">
         <Button variant="ghost" size="icon" onClick={handleBack} className="rounded-full">
           <ArrowLeft className="w-5 h-5" />
         </Button>
@@ -32,7 +32,7 @@ const Onboarding = () => {
         </div>
         <span className="text-sm text-muted-foreground font-medium">{step}/{totalSteps}</span>
       </div>
-      <div className="flex-1 px-6 py-4">
+      <div className="flex-1 px-6 flex flex-col min-h-0">
         <OnboardingSteps />
       </div>
     </div>
