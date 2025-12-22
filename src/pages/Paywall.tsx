@@ -60,7 +60,7 @@ const Paywall = () => {
           exercise_type: data.exerciseType,
           health_conditions: data.healthConditions,
           medications: data.medications,
-          target_date: data.targetDate?.toISOString().split('T')[0],
+          target_date: data.targetDate,
           daily_calories: plan.dailyCalories,
           daily_carbs: plan.dailyCarbs,
           daily_protein: plan.dailyProtein,

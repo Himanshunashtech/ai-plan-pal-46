@@ -25,7 +25,8 @@ export interface OnboardingData {
   exerciseType?: string[];
   healthConditions?: string[];
   medications?: boolean;
-  targetDate?: Date;
+  targetDate?: string;
+  targetMonths?: number;
   fullName?: string;
 }
 
