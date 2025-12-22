@@ -881,7 +881,7 @@ const OnboardingSteps = () => {
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col flex-1 min-h-0">
       <div className="flex-1 overflow-y-auto pb-4">{renderStep()}</div>
       <div className="flex-shrink-0 pt-4 pb-safe bg-background">
         <Button 
