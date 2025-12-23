@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { FoodAnalysisResult } from '@/lib/api/food-analysis';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { FoodDetailImage } from '@/components/ui/OptimizedImage';
 import { Flame, Wheat, Beef, Droplets, Heart, Minus, Plus, Pencil, Check, Apple, Candy, Salad } from 'lucide-react';
 
 interface FoodResultSheetProps {
@@ -59,7 +60,7 @@ const FoodResultSheet = ({ result, imageUrl, onClose, onDone, onRetake }: FoodRe
     <div className="absolute inset-0 z-20 flex flex-col">
       {/* Top Image Section with Labels */}
       <div className="h-[40%] relative flex-shrink-0">
-        <img src={imageUrl} alt="Food" className="w-full h-full object-cover" />
+        <FoodDetailImage src={imageUrl} alt="Food" className="w-full h-full" priority />
         
         {/* Floating nutrition labels */}
         {result.items.slice(0, 3).map((item, index) => (
