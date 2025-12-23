@@ -79,6 +79,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const signOut = async () => {
+    // Clear all local storage data including onboarding progress
+    localStorage.removeItem('onboarding_progress');
     await supabase.auth.signOut();
   };
 

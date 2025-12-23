@@ -51,6 +51,7 @@ interface OnboardingContextType {
   setGeneratedPlan: (plan: GeneratedPlan) => void;
   updateGeneratedPlan: (updates: Partial<GeneratedPlan>) => void;
   resetOnboarding: () => void;
+  clearStepData: (stepNumber: number) => void;
 }
 
 const OnboardingContext = createContext<OnboardingContextType | undefined>(undefined);
@@ -117,6 +118,50 @@ export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children
     localStorage.removeItem(STORAGE_KEY);
   };
 
+  // Map step numbers to the data keys they set
+  const getStepDataKeys = (stepNumber: number): (keyof OnboardingData)[] => {
+    const stepKeyMap: Record<number, (keyof OnboardingData)[]> = {
+      1: ['fullName'],
+      2: ['gender'],
+      3: ['age'],
+      4: ['height', 'heightUnit'],
+      5: ['motivation'],
+      6: ['currentWeight', 'weightUnit'],
+      7: ['goal'],
+      8: ['targetWeight'],
+      9: ['activityLevel'],
+      10: ['weeklyGoal'],
+      11: ['dietType'],
+      12: ['allergies'],
+      13: ['mealsPerDay'],
+      14: ['waterIntake'],
+      15: ['sleepHours'],
+      16: ['stressLevel'],
+      17: ['previousDiets'],
+      18: ['cookingTime'],
+      19: ['snacking'],
+      20: ['exerciseFrequency'],
+      21: ['exerciseType'],
+      22: ['healthConditions'],
+      23: ['medications'],
+      24: ['targetDate', 'targetMonths'],
+    };
+    return stepKeyMap[stepNumber] || [];
+  };
+
+  const clearStepData = (stepNumber: number) => {
+    const keysToRemove = getStepDataKeys(stepNumber);
+    if (keysToRemove.length > 0) {
+      setData(prev => {
+        const newData = { ...prev };
+        keysToRemove.forEach(key => {
+          delete newData[key];
+        });
+        return newData;
+      });
+    }
+  };
+
   return (
     <OnboardingContext.Provider value={{
       step,
@@ -129,7 +174,8 @@ export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children
       updateData,
       setGeneratedPlan,
       updateGeneratedPlan,
-      resetOnboarding
+      resetOnboarding,
+      clearStepData
     }}>
       {children}
     </OnboardingContext.Provider>
