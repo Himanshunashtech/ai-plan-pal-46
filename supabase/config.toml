@@ -17,3 +17,15 @@ verify_jwt = false
 
 [functions.cleanup-deleted-accounts]
 verify_jwt = false
+
+[functions.enqueue-food-analysis]
+verify_jwt = true
+
+[functions.process-food-analysis]
+verify_jwt = false
+
+[functions.get-job-status]
+verify_jwt = true
+
+[functions.cached-stats]
+verify_jwt = true

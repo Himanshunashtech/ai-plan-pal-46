@@ -24,6 +24,80 @@ export interface FoodAnalysisResult {
   servingSize: string;
 }
 
+export interface JobStatus {
+  id: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  result?: FoodAnalysisResult;
+  error?: string;
+  imageUrl?: string;
+}
+
+// Enqueue a food analysis job (async)
+export async function enqueueAnalysis(imageBase64: string): Promise<string> {
+  const { data, error } = await supabase.functions.invoke('enqueue-food-analysis', {
+    body: { imageBase64 }
+  });
+
+  if (error) {
+    throw new Error(error.message || 'Failed to enqueue analysis');
+  }
+
+  if (!data?.success) {
+    throw new Error(data?.error || 'Failed to enqueue');
+  }
+
+  return data.jobId;
+}
+
+// Poll for job status
+export async function getJobStatus(jobId: string): Promise<JobStatus> {
+  const response = await fetch(
+    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-job-status?jobId=${jobId}`,
+    {
+      headers: {
+        'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+        'Content-Type': 'application/json'
+      }
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error('Failed to get job status');
+  }
+
+  const data = await response.json();
+  return data.job;
+}
+
+// Poll until job completes
+export async function waitForAnalysis(
+  jobId: string, 
+  onProgress?: (status: string) => void,
+  maxWaitMs: number = 60000,
+  pollIntervalMs: number = 1000
+): Promise<FoodAnalysisResult> {
+  const startTime = Date.now();
+  
+  while (Date.now() - startTime < maxWaitMs) {
+    const status = await getJobStatus(jobId);
+    
+    if (status.status === 'completed' && status.result) {
+      return status.result;
+    }
+    
+    if (status.status === 'failed') {
+      throw new Error(status.error || 'Analysis failed');
+    }
+    
+    onProgress?.(status.status === 'processing' ? 'Analyzing food...' : 'Queued...');
+    
+    await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
+  }
+  
+  throw new Error('Analysis timed out');
+}
+
+// Legacy synchronous analysis (fallback)
 export async function analyzeFood(imageBase64: string): Promise<FoodAnalysisResult> {
   const { data, error } = await supabase.functions.invoke('analyze-food', {
     body: { imageBase64 }
@@ -38,6 +112,16 @@ export async function analyzeFood(imageBase64: string): Promise<FoodAnalysisResu
   }
 
   return data.data;
+}
+
+// Async analysis using job queue
+export async function analyzeFoodAsync(
+  imageBase64: string,
+  onProgress?: (status: string) => void
+): Promise<FoodAnalysisResult> {
+  onProgress?.('Queuing analysis...');
+  const jobId = await enqueueAnalysis(imageBase64);
+  return waitForAnalysis(jobId, onProgress);
 }
 
 export interface SaveFoodResult {
