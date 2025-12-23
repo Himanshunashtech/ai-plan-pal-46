@@ -13,6 +13,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useBadges } from '@/hooks/useBadges';
 import { format, startOfDay, endOfDay, subDays, addDays, isSameDay } from 'date-fns';
 import { useSwipe } from '@/hooks/useSwipe';
+import { DashboardSkeleton } from '@/components/skeletons';
 
 interface FoodEntry {
   id: string;
@@ -125,9 +126,11 @@ const Dashboard = () => {
     onSwipeRight: () => navigateWeek('next'),
   });
 
+  const [initialLoading, setInitialLoading] = useState(true);
+
   useEffect(() => {
     if (user) {
-      fetchDashboardData();
+      fetchDashboardData().then(() => setInitialLoading(false));
     }
   }, [user, selectedDate]);
 
@@ -196,6 +199,10 @@ const Dashboard = () => {
   const fiberLeft = Math.max(0, goals.daily_fiber - dailyTotals.fiber);
   const sugarLeft = Math.max(0, goals.daily_sugar - dailyTotals.sugar);
   const sodiumLeft = Math.max(0, goals.daily_sodium - dailyTotals.sodium);
+
+  if (initialLoading) {
+    return <DashboardSkeleton />;
+  }
 
   return (
     <div className="min-h-screen bg-background flex flex-col safe-area-top safe-area-bottom">

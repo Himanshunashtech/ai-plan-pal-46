@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
+import { ProgressSkeleton } from '@/components/skeletons';
 
 interface DailyData {
   date: string;
@@ -35,6 +36,7 @@ const Progress = () => {
   const [dailyData, setDailyData] = useState<DailyData[]>([]);
   const [goals, setGoals] = useState<UserGoals>({ daily_calories: 2000, daily_protein: 150, daily_carbs: 200, daily_fats: 60, daily_fiber: 25, daily_sugar: 50, daily_sodium: 2300 });
   const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
 
   const tabs = [
     { id: '7' as const, label: '7 Days' },
@@ -44,7 +46,7 @@ const Progress = () => {
 
   useEffect(() => {
     if (user) {
-      fetchProgressData();
+      fetchProgressData().then(() => setInitialLoading(false));
     }
   }, [user, selectedPeriod]);
 
@@ -169,6 +171,10 @@ const Progress = () => {
 
   const caloriesTrend = averages.calories - goals.daily_calories;
   const isOverGoal = caloriesTrend > 0;
+
+  if (initialLoading) {
+    return <ProgressSkeleton />;
+  }
 
   return (
     <div className="min-h-screen bg-background flex flex-col safe-area-top safe-area-bottom">
