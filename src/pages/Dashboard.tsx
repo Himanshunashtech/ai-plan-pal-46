@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Home, BarChart3, Scan, User, ChevronLeft, ChevronRight, X, Flame, Beef, Wheat, Droplets, Heart } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
@@ -11,6 +11,7 @@ import ActivityCarousel from '@/components/dashboard/ActivityCarousel';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBadges } from '@/hooks/useBadges';
+import { useDailySummary } from '@/hooks/useCachedStats';
 import { format, startOfDay, endOfDay, subDays, addDays, isSameDay } from 'date-fns';
 import { useSwipe } from '@/hooks/useSwipe';
 import { DashboardSkeleton } from '@/components/skeletons';
@@ -95,6 +96,10 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { newlyUnlockedBadge, clearNewlyUnlockedBadge } = useBadges();
+  
+  // Use cached stats for goals (fast initial load)
+  const { data: cachedSummary, isCached } = useDailySummary(!!user);
+  
   const [recentFoods, setRecentFoods] = useState<FoodEntry[]>([]);
   const [dailyTotals, setDailyTotals] = useState<DailyTotals>({ 
     calories: 0, protein: 0, carbs: 0, fats: 0, fiber: 0, sugar: 0, sodium: 0 
@@ -128,6 +133,21 @@ const Dashboard = () => {
   });
 
   const [initialLoading, setInitialLoading] = useState(true);
+
+  // Use cached goals on initial load for faster display
+  useEffect(() => {
+    if (cachedSummary?.goals && isCached) {
+      setGoals({
+        daily_calories: cachedSummary.goals.daily_calories || 2000,
+        daily_protein: cachedSummary.goals.daily_protein || 150,
+        daily_carbs: cachedSummary.goals.daily_carbs || 200,
+        daily_fats: cachedSummary.goals.daily_fats || 60,
+        daily_fiber: cachedSummary.goals.daily_fiber || 25,
+        daily_sugar: cachedSummary.goals.daily_sugar || 50,
+        daily_sodium: cachedSummary.goals.daily_sodium || 2300
+      });
+    }
+  }, [cachedSummary, isCached]);
 
   useEffect(() => {
     if (user) {
