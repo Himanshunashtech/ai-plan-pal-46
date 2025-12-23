@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
+import { preprocessImage } from '@/lib/image-preprocessing';
 
 export const useCamera = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -37,7 +38,7 @@ export const useCamera = () => {
     setIsStreaming(false);
   }, []);
 
-  const capturePhoto = useCallback((): string | null => {
+  const capturePhoto = useCallback(async (): Promise<string | null> => {
     if (!videoRef.current || !isStreaming) return null;
 
     const canvas = document.createElement('canvas');
@@ -48,7 +49,12 @@ export const useCamera = () => {
     if (!ctx) return null;
     
     ctx.drawImage(videoRef.current, 0, 0);
-    return canvas.toDataURL('image/jpeg', 0.8);
+    const rawImage = canvas.toDataURL('image/jpeg', 0.9);
+    
+    // Preprocess: resize to 512px max, convert to WebP, strip metadata
+    const optimizedImage = await preprocessImage(rawImage);
+    
+    return optimizedImage;
   }, [isStreaming]);
 
   return {
@@ -60,3 +66,4 @@ export const useCamera = () => {
     capturePhoto
   };
 };
+
