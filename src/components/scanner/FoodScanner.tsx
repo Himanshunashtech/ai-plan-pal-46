@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useCamera } from '@/hooks/useCamera';
-import { analyzeFood, FoodAnalysisResult } from '@/lib/api/food-analysis';
+import { analyzeFoodAsync, FoodAnalysisResult } from '@/lib/api/food-analysis';
 import { Button } from '@/components/ui/button';
 import { X, Camera, Zap, Loader2 } from 'lucide-react';
 import FoodLabels from './FoodLabels';
@@ -14,6 +14,7 @@ interface FoodScannerProps {
 const FoodScanner = ({ onClose, onFoodLogged }: FoodScannerProps) => {
   const { videoRef, isStreaming, error, startCamera, stopCamera, capturePhoto } = useCamera();
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analyzeStatus, setAnalyzeStatus] = useState<string>('');
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [analysisResult, setAnalysisResult] = useState<FoodAnalysisResult | null>(null);
   const [showResult, setShowResult] = useState(false);
@@ -29,13 +30,18 @@ const FoodScanner = ({ onClose, onFoodLogged }: FoodScannerProps) => {
 
     setCapturedImage(photo);
     setIsAnalyzing(true);
+    setAnalyzeStatus('Queuing analysis...');
 
     try {
-      const result = await analyzeFood(photo);
+      // Use async job queue for better reliability
+      const result = await analyzeFoodAsync(photo, (status) => {
+        setAnalyzeStatus(status);
+      });
       setAnalysisResult(result);
       setShowResult(true);
     } catch (err) {
       console.error('Analysis error:', err);
+      setAnalyzeStatus('Analysis failed. Please try again.');
     } finally {
       setIsAnalyzing(false);
     }
@@ -122,7 +128,7 @@ const FoodScanner = ({ onClose, onFoodLogged }: FoodScannerProps) => {
           <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
             <div className="flex flex-col items-center gap-3">
               <Loader2 className="w-12 h-12 text-white animate-spin" />
-              <p className="text-white font-medium">Analyzing food...</p>
+              <p className="text-white font-medium">{analyzeStatus || 'Analyzing food...'}</p>
             </div>
           </div>
         )}

@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      cache_entries: {
+        Row: {
+          cache_key: string
+          created_at: string
+          data: Json
+          expires_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          cache_key: string
+          created_at?: string
+          data: Json
+          expires_at: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          cache_key?: string
+          created_at?: string
+          data?: Json
+          expires_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       daily_nutrition_logs: {
         Row: {
           calories_burned: number | null
@@ -71,6 +98,45 @@ export type Database = {
           user_id?: string
           water_intake?: number | null
           weight?: number | null
+        }
+        Relationships: []
+      }
+      food_analysis_jobs: {
+        Row: {
+          created_at: string
+          error: string | null
+          id: string
+          image_base64: string
+          image_url: string | null
+          processed_at: string | null
+          result: Json | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          error?: string | null
+          id?: string
+          image_base64: string
+          image_url?: string | null
+          processed_at?: string | null
+          result?: Json | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          error?: string | null
+          id?: string
+          image_base64?: string
+          image_url?: string | null
+          processed_at?: string | null
+          result?: Json | null
+          status?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
