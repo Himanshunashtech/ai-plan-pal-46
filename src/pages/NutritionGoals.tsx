@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import { FormPageSkeleton } from '@/components/skeletons';
 
 interface NutritionGoals {
   daily_calories: number;
@@ -114,6 +115,10 @@ const NutritionGoalsPage = () => {
     { key: 'daily_sodium' as const, label: 'Daily Sodium', unit: 'mg', color: 'text-sodium' },
   ];
 
+  if (loading) {
+    return <FormPageSkeleton fieldCount={7} />;
+  }
+
   return (
     <div className="min-h-screen bg-background flex flex-col safe-area-top safe-area-bottom">
       <div className="flex-1 px-6 py-6 overflow-auto">
@@ -124,12 +129,7 @@ const NutritionGoalsPage = () => {
           <h1 className="text-xl font-bold">Nutrition Goals</h1>
         </div>
 
-        {loading ? (
-          <div className="bg-card rounded-2xl p-6 shadow-soft text-center">
-            <p className="text-muted-foreground">Loading goals...</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
+        <div className="space-y-4">
             {goalFields.map(({ key, label, unit, color }) => (
               <div key={key} className="bg-card rounded-2xl p-4 shadow-soft">
                 <Label htmlFor={key} className={`text-sm font-medium ${color}`}>
@@ -158,7 +158,6 @@ const NutritionGoalsPage = () => {
               {saving ? 'Saving...' : 'Save Goals'}
             </Button>
           </div>
-        )}
       </div>
     </div>
   );

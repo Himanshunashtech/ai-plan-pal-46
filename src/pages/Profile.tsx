@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import DeleteAccountDialog from '@/components/profile/DeleteAccountDialog';
+import { ProfileSkeleton } from '@/components/skeletons';
 
 interface ProfileInfo {
   full_name: string | null;
@@ -16,17 +17,22 @@ const Profile = () => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const [profileInfo, setProfileInfo] = useState<ProfileInfo>({ full_name: null, avatar_url: null });
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchProfile = async () => {
       if (!user) return;
-      const { data } = await supabase
-        .from('profiles')
-        .select('full_name, avatar_url')
-        .eq('user_id', user.id)
-        .single();
-      if (data) {
-        setProfileInfo(data);
+      try {
+        const { data } = await supabase
+          .from('profiles')
+          .select('full_name, avatar_url')
+          .eq('user_id', user.id)
+          .single();
+        if (data) {
+          setProfileInfo(data);
+        }
+      } finally {
+        setLoading(false);
       }
     };
     fetchProfile();
@@ -51,6 +57,10 @@ const Profile = () => {
     { label: 'Help & Support', path: '#', icon: null },
     { label: 'Privacy Policy', path: '#', icon: null },
   ];
+
+  if (loading) {
+    return <ProfileSkeleton />;
+  }
 
   return (
     <div className="min-h-screen bg-background flex flex-col safe-area-top safe-area-bottom">

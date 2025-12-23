@@ -1,8 +1,22 @@
 import { ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { EmailPreferences as EmailPreferencesComponent } from '@/components/settings/EmailPreferences';
+import { SettingsPageSkeleton } from '@/components/skeletons';
+import { useState, useEffect } from 'react';
 
 const EmailPreferences = () => {
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Simulate initial load
+    const timer = setTimeout(() => setLoading(false), 300);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (loading) {
+    return <SettingsPageSkeleton itemCount={4} />;
+  }
+
   return (
     <div className="min-h-screen bg-background safe-area-top safe-area-bottom">
       <div className="px-6 py-6">

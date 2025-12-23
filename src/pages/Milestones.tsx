@@ -7,6 +7,7 @@ import { useNotifications } from '@/hooks/useNotifications';
 import { BADGES, Badge, BADGE_COLORS, getBadgesByCategory } from '@/lib/badges';
 import { StreakShareSheet } from '@/components/badges/StreakShareSheet';
 import { BadgeCelebration } from '@/components/badges/BadgeCelebration';
+import { MilestonesSkeleton } from '@/components/skeletons';
 
 const BadgeIcon = ({ badge, unlocked }: { badge: Badge & { unlocked: boolean }; unlocked: boolean }) => {
   const colors = BADGE_COLORS[badge.category];
@@ -43,8 +44,8 @@ const BadgeIcon = ({ badge, unlocked }: { badge: Badge & { unlocked: boolean }; 
 
 const Milestones = () => {
   const navigate = useNavigate();
-  const { getAllBadgesWithStatus, badgeCount, totalBadges } = useBadges();
-  const { streak } = useNotifications();
+  const { getAllBadgesWithStatus, badgeCount, totalBadges, loading: badgesLoading } = useBadges();
+  const { streak, loading: streakLoading } = useNotifications();
   const [showStreakShare, setShowStreakShare] = useState(false);
   const [selectedBadge, setSelectedBadge] = useState<Badge | null>(null);
   const [activeTab, setActiveTab] = useState<'streak' | 'badges'>('streak');
@@ -57,6 +58,10 @@ const Milestones = () => {
   const socialBadges = allBadges.filter(b => b.category === 'social');
   const waterBadges = allBadges.filter(b => b.category === 'water');
   const specialBadges = allBadges.filter(b => b.category === 'special');
+
+  if (badgesLoading || streakLoading) {
+    return <MilestonesSkeleton />;
+  }
 
   return (
     <div className="min-h-screen bg-background flex flex-col safe-area-top safe-area-bottom">

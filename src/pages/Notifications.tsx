@@ -2,9 +2,22 @@ import { ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { NotificationSettings } from '@/components/settings/NotificationSettings';
+import { SettingsPageSkeleton } from '@/components/skeletons';
+import { useState, useEffect } from 'react';
 
 const Notifications = () => {
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Simulate initial load
+    const timer = setTimeout(() => setLoading(false), 300);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (loading) {
+    return <SettingsPageSkeleton itemCount={4} />;
+  }
 
   return (
     <div className="min-h-screen bg-background flex flex-col safe-area-top safe-area-bottom">
