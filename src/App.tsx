@@ -40,14 +40,15 @@ const App = () => (
             <Routes>
               {/* Public routes - redirect to dashboard if logged in */}
               <Route path="/" element={<PublicRoute><Splash /></PublicRoute>} />
+              <Route path="/splash" element={<PublicRoute><Splash /></PublicRoute>} />
               <Route path="/welcome" element={<PublicRoute><Welcome /></PublicRoute>} />
               <Route path="/auth" element={<PublicRoute><Auth /></PublicRoute>} />
               <Route path="/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
               
-              {/* Onboarding routes - accessible during signup flow */}
-              <Route path="/onboarding" element={<Onboarding />} />
-              <Route path="/plan-ready" element={<PlanReady />} />
-              <Route path="/paywall" element={<Paywall />} />
+              {/* Onboarding routes - redirect to dashboard if logged in with completed onboarding */}
+              <Route path="/onboarding" element={<PublicRoute><Onboarding /></PublicRoute>} />
+              <Route path="/plan-ready" element={<PublicRoute><PlanReady /></PublicRoute>} />
+              <Route path="/paywall" element={<PublicRoute><Paywall /></PublicRoute>} />
               
               {/* Protected routes - require authentication */}
               <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
