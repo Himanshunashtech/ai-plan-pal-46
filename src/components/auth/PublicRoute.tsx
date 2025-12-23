@@ -1,7 +1,8 @@
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import OnboardingSkeleton from '@/components/onboarding/OnboardingSkeleton';
 
 interface PublicRouteProps {
   children: React.ReactNode;
@@ -9,8 +10,12 @@ interface PublicRouteProps {
 
 const PublicRoute = ({ children }: PublicRouteProps) => {
   const { user, loading } = useAuth();
+  const location = useLocation();
   const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | null>(null);
   const [checking, setChecking] = useState(true);
+
+  // Check if current route is an onboarding-related route
+  const isOnboardingRoute = ['/onboarding', '/plan-ready', '/paywall'].includes(location.pathname);
 
   useEffect(() => {
     const checkOnboarding = async () => {
@@ -41,6 +46,12 @@ const PublicRoute = ({ children }: PublicRouteProps) => {
 
   // Still loading auth state or checking onboarding
   if (loading || checking) {
+    // Show onboarding skeleton for onboarding routes
+    if (isOnboardingRoute) {
+      return <OnboardingSkeleton />;
+    }
+
+    // Default loader for other public routes
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex gap-1">
