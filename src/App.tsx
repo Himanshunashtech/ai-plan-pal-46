@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { OnboardingProvider } from "@/contexts/OnboardingContext";
+import OfflineBanner from "@/components/ui/OfflineBanner";
 import Splash from "./pages/Splash";
 import Welcome from "./pages/Welcome";
 import Auth from "./pages/Auth";
@@ -30,6 +31,7 @@ const App = () => (
     <TooltipProvider>
       <AuthProvider>
         <OnboardingProvider>
+          <OfflineBanner />
           <Toaster />
           <Sonner />
           <BrowserRouter>
