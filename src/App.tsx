@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { OnboardingProvider } from "@/contexts/OnboardingContext";
 import OfflineBanner from "@/components/ui/OfflineBanner";
+import PublicRoute from "@/components/auth/PublicRoute";
 import Splash from "./pages/Splash";
 import Welcome from "./pages/Welcome";
 import Auth from "./pages/Auth";
@@ -36,10 +37,10 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <Routes>
-              <Route path="/" element={<Splash />} />
-              <Route path="/welcome" element={<Welcome />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/" element={<PublicRoute><Splash /></PublicRoute>} />
+              <Route path="/welcome" element={<PublicRoute><Welcome /></PublicRoute>} />
+              <Route path="/auth" element={<PublicRoute><Auth /></PublicRoute>} />
+              <Route path="/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
               <Route path="/onboarding" element={<Onboarding />} />
               <Route path="/plan-ready" element={<PlanReady />} />
               <Route path="/paywall" element={<Paywall />} />
