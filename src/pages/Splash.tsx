@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { Skeleton } from '@/components/ui/skeleton';
 import alleAiLogo from '@/assets/alle-ai-logo.png';
 
 const Splash = () => {
   const navigate = useNavigate();
-  const [checking, setChecking] = useState(true);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(false);
 
   useEffect(() => {
     const checkAuthAndRedirect = async () => {
+      setIsCheckingAuth(true);
       try {
         const { data: { session } } = await supabase.auth.getSession();
         
@@ -29,15 +31,13 @@ const Splash = () => {
           // No session, go to welcome after delay
           setTimeout(() => {
             navigate('/welcome', { replace: true });
-          }, 2500);
+          }, 1500);
         }
       } catch (error) {
         console.error('Auth check error:', error);
         setTimeout(() => {
           navigate('/welcome', { replace: true });
-        }, 2500);
-      } finally {
-        setChecking(false);
+        }, 1500);
       }
     };
 
@@ -66,11 +66,25 @@ const Splash = () => {
           </p>
         </div>
 
-        {/* Loading indicator */}
-        <div className="mt-8 flex gap-1">
-          <div className="w-2 h-2 rounded-full bg-primary animate-pulse" style={{ animationDelay: '0ms' }} />
-          <div className="w-2 h-2 rounded-full bg-primary animate-pulse" style={{ animationDelay: '150ms' }} />
-          <div className="w-2 h-2 rounded-full bg-primary animate-pulse" style={{ animationDelay: '300ms' }} />
+        {/* Loading indicator with skeleton */}
+        <div className="mt-8 flex flex-col items-center gap-4">
+          {isCheckingAuth ? (
+            <>
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-4 w-4 rounded-full" />
+                <Skeleton className="h-3 w-24 rounded" />
+              </div>
+              <p className="text-xs text-muted-foreground animate-pulse">
+                Checking your session...
+              </p>
+            </>
+          ) : (
+            <div className="flex gap-1">
+              <div className="w-2 h-2 rounded-full bg-primary animate-pulse" style={{ animationDelay: '0ms' }} />
+              <div className="w-2 h-2 rounded-full bg-primary animate-pulse" style={{ animationDelay: '150ms' }} />
+              <div className="w-2 h-2 rounded-full bg-primary animate-pulse" style={{ animationDelay: '300ms' }} />
+            </div>
+          )}
         </div>
       </div>
     </div>
