@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Home, BarChart3, Scan, User, TrendingUp, TrendingDown, Flame, Beef, Wheat, Droplets, Leaf, Cookie, Zap } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNutritionTrends, useCachedStats } from '@/hooks/useCachedStats';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 import { ProgressSkeleton } from '@/components/skeletons';
@@ -39,17 +40,63 @@ const Progress = () => {
   const [loading, setLoading] = useState(true);
   const [initialLoading, setInitialLoading] = useState(true);
 
+  // Use cached nutrition trends for 30-day period
+  const { data: cachedTrends, isCached } = useNutritionTrends(!!user && selectedPeriod === '30');
+
+  // Use cached goals
+  const { data: cachedGoals } = useCachedStats<{ profile: UserGoals }>({ type: 'user_goals', enabled: !!user });
+
   const tabs = [
     { id: '7' as const, label: '7 Days' },
     { id: '30' as const, label: '30 Days' },
     { id: '90' as const, label: '90 Days' },
   ];
 
+  // Apply cached goals on load
+  useEffect(() => {
+    if (cachedGoals?.profile) {
+      const p = cachedGoals.profile;
+      setGoals({
+        daily_calories: p.daily_calories || 2000,
+        daily_protein: p.daily_protein || 150,
+        daily_carbs: p.daily_carbs || 200,
+        daily_fats: p.daily_fats || 60,
+        daily_fiber: p.daily_fiber || 25,
+        daily_sugar: p.daily_sugar || 50,
+        daily_sodium: p.daily_sodium || 2300
+      });
+    }
+  }, [cachedGoals]);
+
+  // Use cached trends for 30-day view if available
+  useEffect(() => {
+    if (selectedPeriod === '30' && cachedTrends?.trends && isCached) {
+      const formattedData = cachedTrends.trends.map(t => ({
+        date: t.date,
+        day: format(new Date(t.date), 'MMM d'),
+        calories: t.calories,
+        protein: t.protein,
+        carbs: t.carbs,
+        fats: t.fats,
+        fiber: t.fiber,
+        sugar: t.sugar,
+        sodium: t.sodium
+      }));
+      setDailyData(formattedData);
+      setLoading(false);
+      setInitialLoading(false);
+    }
+  }, [cachedTrends, isCached, selectedPeriod]);
+
   useEffect(() => {
     if (user) {
+      // Skip fetch if we have cached data for 30-day period
+      if (selectedPeriod === '30' && cachedTrends?.trends && isCached) {
+        return;
+      }
       fetchProgressData().then(() => setInitialLoading(false));
     }
-  }, [user, selectedPeriod]);
+  }, [user, selectedPeriod, cachedTrends, isCached]);
 
   const fetchProgressData = async () => {
     if (!user) return;
