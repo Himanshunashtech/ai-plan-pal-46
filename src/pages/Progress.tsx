@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 import { ProgressSkeleton } from '@/components/skeletons';
+import SwipeableChart from '@/components/charts/SwipeableChart';
 
 interface DailyData {
   date: string;
@@ -223,47 +224,51 @@ const Progress = () => {
                   <span>{Math.abs(caloriesTrend)} avg/day</span>
                 </div>
               </div>
-              <div className="h-48">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={dailyData}>
-                    <XAxis 
-                      dataKey="day" 
-                      axisLine={false} 
-                      tickLine={false}
-                      tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-                      interval={selectedPeriod === '7' ? 0 : 'preserveStartEnd'}
-                    />
-                    <YAxis hide />
-                    <Bar 
-                      dataKey="calories" 
-                      fill="hsl(var(--primary))" 
-                      radius={[4, 4, 0, 0]}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+              <SwipeableChart dataLength={dailyData.length} itemWidth={selectedPeriod === '7' ? 14 : selectedPeriod === '30' ? 5 : 2}>
+                <div className="h-48" style={{ width: `${Math.max(dailyData.length * (selectedPeriod === '7' ? 50 : selectedPeriod === '30' ? 25 : 15), 100)}px`, minWidth: '100%' }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={dailyData}>
+                      <XAxis 
+                        dataKey="day" 
+                        axisLine={false} 
+                        tickLine={false}
+                        tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                        interval={0}
+                      />
+                      <YAxis hide />
+                      <Bar 
+                        dataKey="calories" 
+                        fill="hsl(var(--primary))" 
+                        radius={[4, 4, 0, 0]}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </SwipeableChart>
             </div>
 
             {/* Macros Line Chart */}
             <div className="bg-card rounded-2xl p-4 shadow-soft mb-6">
               <h3 className="font-semibold mb-4">Macros Over Time</h3>
-              <div className="h-48">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={dailyData}>
-                    <XAxis 
-                      dataKey="day" 
-                      axisLine={false} 
-                      tickLine={false}
-                      tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-                      interval={selectedPeriod === '7' ? 0 : 'preserveStartEnd'}
-                    />
-                    <YAxis hide />
-                    <Line type="monotone" dataKey="protein" stroke="#ef4444" strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="carbs" stroke="#f59e0b" strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="fats" stroke="#3b82f6" strokeWidth={2} dot={false} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
+              <SwipeableChart dataLength={dailyData.length} itemWidth={selectedPeriod === '7' ? 14 : selectedPeriod === '30' ? 5 : 2}>
+                <div className="h-48" style={{ width: `${Math.max(dailyData.length * (selectedPeriod === '7' ? 50 : selectedPeriod === '30' ? 25 : 15), 100)}px`, minWidth: '100%' }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={dailyData}>
+                      <XAxis 
+                        dataKey="day" 
+                        axisLine={false} 
+                        tickLine={false}
+                        tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                        interval={0}
+                      />
+                      <YAxis hide />
+                      <Line type="monotone" dataKey="protein" stroke="#ef4444" strokeWidth={2} dot={false} />
+                      <Line type="monotone" dataKey="carbs" stroke="#f59e0b" strokeWidth={2} dot={false} />
+                      <Line type="monotone" dataKey="fats" stroke="#3b82f6" strokeWidth={2} dot={false} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </SwipeableChart>
               <div className="flex justify-center gap-6 mt-2">
                 <div className="flex items-center gap-1">
                   <div className="w-3 h-3 rounded-full bg-red-500" />
@@ -283,23 +288,25 @@ const Progress = () => {
             {/* Fiber, Sugar, Sodium Line Chart */}
             <div className="bg-card rounded-2xl p-4 shadow-soft mb-6">
               <h3 className="font-semibold mb-4">Fiber, Sugar & Sodium Over Time</h3>
-              <div className="h-48">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={dailyData}>
-                    <XAxis 
-                      dataKey="day" 
-                      axisLine={false} 
-                      tickLine={false}
-                      tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-                      interval={selectedPeriod === '7' ? 0 : 'preserveStartEnd'}
-                    />
-                    <YAxis hide />
-                    <Line type="monotone" dataKey="fiber" stroke="hsl(142, 76%, 36%)" strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="sugar" stroke="hsl(330, 81%, 60%)" strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="sodium" stroke="hsl(271, 81%, 56%)" strokeWidth={2} dot={false} name="Sodium (÷100)" />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
+              <SwipeableChart dataLength={dailyData.length} itemWidth={selectedPeriod === '7' ? 14 : selectedPeriod === '30' ? 5 : 2}>
+                <div className="h-48" style={{ width: `${Math.max(dailyData.length * (selectedPeriod === '7' ? 50 : selectedPeriod === '30' ? 25 : 15), 100)}px`, minWidth: '100%' }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={dailyData}>
+                      <XAxis 
+                        dataKey="day" 
+                        axisLine={false} 
+                        tickLine={false}
+                        tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                        interval={0}
+                      />
+                      <YAxis hide />
+                      <Line type="monotone" dataKey="fiber" stroke="hsl(142, 76%, 36%)" strokeWidth={2} dot={false} />
+                      <Line type="monotone" dataKey="sugar" stroke="hsl(330, 81%, 60%)" strokeWidth={2} dot={false} />
+                      <Line type="monotone" dataKey="sodium" stroke="hsl(271, 81%, 56%)" strokeWidth={2} dot={false} name="Sodium (÷100)" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </SwipeableChart>
               <div className="flex justify-center gap-6 mt-2">
                 <div className="flex items-center gap-1">
                   <div className="w-3 h-3 rounded-full bg-fiber" />
