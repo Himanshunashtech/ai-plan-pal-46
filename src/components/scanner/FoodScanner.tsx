@@ -30,13 +30,18 @@ const FoodScanner = ({ onClose, onFoodLogged }: FoodScannerProps) => {
   }, [startCamera, stopCamera]);
 
   const handleCapture = async () => {
-    const photo = capturePhoto();
-    if (!photo) return;
+    setIsAnalyzing(true);
+    setAnalyzeStatus('Optimizing image...');
+    setRateLimitReached(false);
+
+    const photo = await capturePhoto();
+    if (!photo) {
+      setIsAnalyzing(false);
+      return;
+    }
 
     setCapturedImage(photo);
-    setIsAnalyzing(true);
     setAnalyzeStatus('Queuing analysis...');
-    setRateLimitReached(false);
 
     try {
       // Use async job queue for better reliability
