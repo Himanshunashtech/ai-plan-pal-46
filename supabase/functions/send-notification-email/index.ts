@@ -93,7 +93,7 @@ serve(async (req) => {
             <h2 style="color: #10b981;">Profile Updated Successfully</h2>
             <p>Hi ${userName},</p>
             <p>Your profile has been successfully updated. If you didn't make this change, please contact support immediately.</p>
-            <p style="margin-top: 30px; color: #666;">Best regards,<br>The Alle AI Team</p>
+            <p style="margin-top: 30px; color: #666;">Best regards,<br>The Calo Team</p>
           </div>
         `;
         break;
@@ -105,7 +105,7 @@ serve(async (req) => {
             <h2 style="color: #f59e0b;">Password Changed</h2>
             <p>Hi ${userName},</p>
             <p>Your password was recently changed. If you didn't make this change, please reset your password immediately and contact support.</p>
-            <p style="margin-top: 30px; color: #666;">Best regards,<br>The Alle AI Team</p>
+            <p style="margin-top: 30px; color: #666;">Best regards,<br>The Calo Team</p>
           </div>
         `;
         break;
@@ -158,7 +158,7 @@ serve(async (req) => {
             </div>
             
             <p>Keep up the great work! Consistency is key to reaching your health goals.</p>
-            <p style="margin-top: 30px; color: #666;">Best regards,<br>The Alle AI Team</p>
+            <p style="margin-top: 30px; color: #666;">Best regards,<br>The Calo Team</p>
           </div>
         `;
         break;
@@ -176,7 +176,7 @@ serve(async (req) => {
             <p>Your account has been scheduled for deletion on <strong>${formattedDeletionDate}</strong>.</p>
             <p>If you change your mind, simply log back in before this date and you'll be given the option to keep your account and all your data.</p>
             <p>After this date, all your data will be permanently deleted and cannot be recovered.</p>
-            <p style="margin-top: 30px; color: #666;">Best regards,<br>The Alle AI Team</p>
+            <p style="margin-top: 30px; color: #666;">Best regards,<br>The Calo Team</p>
           </div>
         `;
         break;
@@ -188,8 +188,8 @@ serve(async (req) => {
             <h2 style="color: #10b981;">Welcome Back!</h2>
             <p>Hi ${userName},</p>
             <p>Great news! Your account has been restored and the scheduled deletion has been cancelled.</p>
-            <p>All your data is safe and you can continue using Alle AI as before.</p>
-            <p style="margin-top: 30px; color: #666;">Best regards,<br>The Alle AI Team</p>
+            <p>All your data is safe and you can continue using Calo as before.</p>
+            <p style="margin-top: 30px; color: #666;">Best regards,<br>The Calo Team</p>
           </div>
         `;
         break;
@@ -209,7 +209,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'Alle AI <noreply@alleai.com>',
+        from: 'Calo <noreply@calo.app>',
         to: [userEmail],
         subject: subject,
         html: htmlContent,

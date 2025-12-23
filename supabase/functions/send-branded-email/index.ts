@@ -20,7 +20,6 @@ interface EmailRequest {
 
 const getEmailTemplate = (type: string, data: any) => {
   const brandColor = '#22c55e'; // Green from the app
-  const logoUrl = 'https://ijotcekseqoasueihvsh.supabase.co/storage/v1/object/public/avatars/alle-ai-logo.png';
   
   const baseStyles = `
     <style>
@@ -40,7 +39,7 @@ const getEmailTemplate = (type: string, data: any) => {
   switch (type) {
     case 'password_reset':
       return {
-        subject: 'Reset Your Cal AI Password',
+        subject: 'Reset Your Calo Password',
         html: `
           <!DOCTYPE html>
           <html>
@@ -48,8 +47,8 @@ const getEmailTemplate = (type: string, data: any) => {
           <body>
             <div class="container">
               <div class="header">
-                <div class="logo">🔥</div>
-                <div class="brand">Cal AI</div>
+                <div class="logo">🍎</div>
+                <div class="brand">Calo</div>
               </div>
               <div class="content">
                 <h1>Reset Your Password</h1>
@@ -61,7 +60,7 @@ const getEmailTemplate = (type: string, data: any) => {
                 <p style="font-size: 14px; color: #6b7280;">This link will expire in 1 hour. If you didn't request a password reset, you can safely ignore this email.</p>
               </div>
               <div class="footer">
-                <p>© ${new Date().getFullYear()} Cal AI. All rights reserved.</p>
+                <p>© ${new Date().getFullYear()} Calo. All rights reserved.</p>
                 <p>Your AI-powered calorie tracking companion.</p>
               </div>
             </div>
@@ -72,7 +71,7 @@ const getEmailTemplate = (type: string, data: any) => {
 
     case 'email_confirmation':
       return {
-        subject: 'Confirm Your Cal AI Email',
+        subject: 'Confirm Your Calo Email',
         html: `
           <!DOCTYPE html>
           <html>
@@ -80,20 +79,20 @@ const getEmailTemplate = (type: string, data: any) => {
           <body>
             <div class="container">
               <div class="header">
-                <div class="logo">🔥</div>
-                <div class="brand">Cal AI</div>
+                <div class="logo">🍎</div>
+                <div class="brand">Calo</div>
               </div>
               <div class="content">
                 <h1>Confirm Your Email</h1>
                 <p>Hi${data.name ? ` ${data.name}` : ''},</p>
-                <p>Thanks for signing up for Cal AI! Please confirm your email address by clicking the button below:</p>
+                <p>Thanks for signing up for Calo! Please confirm your email address by clicking the button below:</p>
                 <center>
                   <a href="${data.confirmLink}" class="button">Confirm Email</a>
                 </center>
-                <p style="font-size: 14px; color: #6b7280;">If you didn't create a Cal AI account, you can safely ignore this email.</p>
+                <p style="font-size: 14px; color: #6b7280;">If you didn't create a Calo account, you can safely ignore this email.</p>
               </div>
               <div class="footer">
-                <p>© ${new Date().getFullYear()} Cal AI. All rights reserved.</p>
+                <p>© ${new Date().getFullYear()} Calo. All rights reserved.</p>
                 <p>Your AI-powered calorie tracking companion.</p>
               </div>
             </div>
@@ -104,7 +103,7 @@ const getEmailTemplate = (type: string, data: any) => {
 
     case 'welcome':
       return {
-        subject: 'Welcome to Cal AI! 🔥',
+        subject: 'Welcome to Calo! 🍎',
         html: `
           <!DOCTYPE html>
           <html>
@@ -112,13 +111,13 @@ const getEmailTemplate = (type: string, data: any) => {
           <body>
             <div class="container">
               <div class="header">
-                <div class="logo">🔥</div>
-                <div class="brand">Cal AI</div>
+                <div class="logo">🍎</div>
+                <div class="brand">Calo</div>
               </div>
               <div class="content">
-                <h1>Welcome to Cal AI!</h1>
+                <h1>Welcome to Calo!</h1>
                 <p>Hi${data.name ? ` ${data.name}` : ''},</p>
-                <p>We're excited to have you on board! Cal AI is your AI-powered companion for tracking calories and achieving your nutrition goals.</p>
+                <p>We're excited to have you on board! Calo is your AI-powered companion for tracking calories and achieving your nutrition goals.</p>
                 <h3 style="color: #111827; margin-top: 24px;">Here's what you can do:</h3>
                 <ul style="color: #4b5563;">
                   <li>📸 <strong>Scan your meals</strong> - Just take a photo and let AI analyze the nutrition</li>
@@ -129,7 +128,7 @@ const getEmailTemplate = (type: string, data: any) => {
                 <p>Start your health journey today!</p>
               </div>
               <div class="footer">
-                <p>© ${new Date().getFullYear()} Cal AI. All rights reserved.</p>
+                <p>© ${new Date().getFullYear()} Calo. All rights reserved.</p>
                 <p>Your AI-powered calorie tracking companion.</p>
               </div>
             </div>
@@ -161,7 +160,7 @@ const handler = async (req: Request): Promise<Response> => {
     const template = getEmailTemplate(type, data);
 
     const emailResponse = await resend.emails.send({
-      from: "Cal AI <noreply@resend.dev>",
+      from: "Calo <noreply@resend.dev>",
       to: [to],
       subject: template.subject,
       html: template.html,

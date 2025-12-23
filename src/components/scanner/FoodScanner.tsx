@@ -106,7 +106,7 @@ const FoodScanner = ({ onClose, onFoodLogged }: FoodScannerProps) => {
           <X className="w-5 h-5" />
         </Button>
         <div className="flex items-center gap-2">
-          <span className="text-white font-medium">🔥 Cal AI</span>
+          <span className="text-white font-medium">🍎 Calo</span>
         </div>
         <div className="w-10" />
       </div>

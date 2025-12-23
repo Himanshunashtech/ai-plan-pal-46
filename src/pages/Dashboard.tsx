@@ -233,8 +233,8 @@ const Dashboard = () => {
       >
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
-            <span className="text-xl">🔥</span>
-            <span className="font-bold text-lg">Cal AI</span>
+            <span className="text-xl">🍎</span>
+            <span className="font-bold text-lg">Calo</span>
             <SubscriptionBadge compact />
           </div>
           <div className="flex items-center gap-1">

@@ -153,14 +153,14 @@ const Splash = () => {
         {/* Logo */}
         <div className="relative">
           <div className={`w-20 h-20 rounded-3xl bg-background flex items-center justify-center transition-transform duration-300 ${state === 'redirecting' ? 'scale-110' : ''}`}>
-            <img src={alleAiLogo} alt="Alle AI Logo" className="w-16 h-16 object-contain" />
+            <img src={alleAiLogo} alt="Calo Logo" className="w-16 h-16 object-contain" />
           </div>
         </div>
 
         {/* App Name */}
         <div className="text-center">
           <h1 className="text-3xl font-bold text-foreground tracking-tight">
-            Alle AI
+            Calo
           </h1>
           <p className="text-muted-foreground mt-1 text-sm">
             Smart Calorie Tracking
