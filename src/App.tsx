@@ -15,6 +15,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import Onboarding from "./pages/Onboarding";
 import PlanReady from "./pages/PlanReady";
 import Paywall from "./pages/Paywall";
+import Subscription from "./pages/Subscription";
 import Dashboard from "./pages/Dashboard";
 import Progress from "./pages/Progress";
 import Scanner from "./pages/Scanner";
@@ -48,7 +49,9 @@ const App = () => (
               {/* Onboarding routes - redirect to dashboard if logged in with completed onboarding */}
               <Route path="/onboarding" element={<PublicRoute><Onboarding /></PublicRoute>} />
               <Route path="/plan-ready" element={<PublicRoute><PlanReady /></PublicRoute>} />
-              <Route path="/paywall" element={<PublicRoute><Paywall /></PublicRoute>} />
+              
+              {/* Paywall - requires authentication */}
+              <Route path="/paywall" element={<ProtectedRoute><Paywall /></ProtectedRoute>} />
               
               {/* Protected routes - require authentication */}
               <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
@@ -60,6 +63,7 @@ const App = () => (
               <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
               <Route path="/email-preferences" element={<ProtectedRoute><EmailPreferences /></ProtectedRoute>} />
               <Route path="/milestones" element={<ProtectedRoute><Milestones /></ProtectedRoute>} />
+              <Route path="/subscription" element={<ProtectedRoute><Subscription /></ProtectedRoute>} />
               
               <Route path="*" element={<NotFound />} />
             </Routes>

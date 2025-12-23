@@ -1,4 +1,4 @@
-import { Home, BarChart3, Scan, User, ChevronRight, LogOut, Trophy } from 'lucide-react';
+import { Home, BarChart3, Scan, User, ChevronRight, LogOut, Trophy, Crown } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -53,7 +53,7 @@ const Profile = () => {
     { label: 'Nutrition Goals', path: '/nutrition-goals', icon: null },
     { label: 'Notifications', path: '/notifications', icon: null },
     { label: 'Email Preferences', path: '/email-preferences', icon: null },
-    { label: 'Subscription', path: '#', icon: null },
+    { label: 'Subscription', path: '/subscription', icon: Crown },
     { label: 'Help & Support', path: '#', icon: null },
     { label: 'Privacy Policy', path: '#', icon: null },
   ];
