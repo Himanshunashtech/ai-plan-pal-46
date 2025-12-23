@@ -192,17 +192,23 @@ Always respond with valid JSON in this exact format:
       };
     }
 
-    // Upload image to storage
+    // Upload image to storage with CDN-optimized settings
     let imageUrl = null;
     try {
       const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '');
       const buffer = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
-      const fileName = `${job.user_id}/${job.id}.jpg`;
+      
+      // Detect WebP format from base64 header
+      const isWebP = imageBase64.includes('data:image/webp');
+      const contentType = isWebP ? 'image/webp' : 'image/jpeg';
+      const extension = isWebP ? 'webp' : 'jpg';
+      const fileName = `${job.user_id}/${job.id}.${extension}`;
 
       const { error: uploadError } = await supabase.storage
         .from('food-images')
         .upload(fileName, buffer, {
-          contentType: 'image/jpeg',
+          contentType,
+          cacheControl: '31536000', // 1 year cache - immutable content
           upsert: false
         });
 
@@ -211,6 +217,7 @@ Always respond with valid JSON in this exact format:
           .from('food-images')
           .getPublicUrl(fileName);
         imageUrl = urlData.publicUrl;
+        console.log('Image uploaded to CDN:', imageUrl);
       }
     } catch (uploadErr) {
       console.error('Failed to upload image:', uploadErr);
