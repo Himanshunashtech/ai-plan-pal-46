@@ -6,12 +6,16 @@ import OnboardingSteps from '@/components/onboarding/OnboardingSteps';
 
 const Onboarding = () => {
   const navigate = useNavigate();
-  const { step, totalSteps, prevStep } = useOnboarding();
+  const { step, totalSteps, prevStep, clearStepData, resetOnboarding } = useOnboarding();
 
   const handleBack = () => {
     if (step === 1) {
-      navigate('/auth');
+      // Going back from first step to welcome - clear all onboarding data
+      resetOnboarding();
+      navigate('/welcome');
     } else {
+      // Clear current step's data before going back
+      clearStepData(step);
       prevStep();
     }
   };

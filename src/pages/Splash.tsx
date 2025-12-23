@@ -1,15 +1,48 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 import alleAiLogo from '@/assets/alle-ai-logo.png';
 
 const Splash = () => {
   const navigate = useNavigate();
+  const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      navigate('/welcome');
-    }, 2500);
+    const checkAuthAndRedirect = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session?.user) {
+          // Check if user has completed onboarding
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('onboarding_completed')
+            .eq('user_id', session.user.id)
+            .single();
+          
+          if (profile?.onboarding_completed) {
+            navigate('/dashboard', { replace: true });
+          } else {
+            navigate('/onboarding', { replace: true });
+          }
+        } else {
+          // No session, go to welcome after delay
+          setTimeout(() => {
+            navigate('/welcome', { replace: true });
+          }, 2500);
+        }
+      } catch (error) {
+        console.error('Auth check error:', error);
+        setTimeout(() => {
+          navigate('/welcome', { replace: true });
+        }, 2500);
+      } finally {
+        setChecking(false);
+      }
+    };
 
+    // Small delay to show splash, then check auth
+    const timer = setTimeout(checkAuthAndRedirect, 1000);
     return () => clearTimeout(timer);
   }, [navigate]);
 
