@@ -195,7 +195,7 @@ const Auth = () => {
         {/* Header */}
         <div className="flex flex-col items-center mb-10 animate-fade-in">
           <div className="w-16 h-16 rounded-2xl bg-background flex items-center justify-center mb-4">
-            <img src={alleAiLogo} alt="Alle AI Logo" className="w-14 h-14 object-contain" />
+            <img src={alleAiLogo} alt="Calo Logo" className="w-14 h-14 object-contain" />
           </div>
           <h1 className="text-2xl font-bold text-foreground">
             {mode === 'login' ? 'Welcome Back!' : 'Create Account'}
@@ -327,7 +327,7 @@ const Auth = () => {
         {mode === 'login' && (
           <div className="mt-8 text-center animate-fade-in" style={{ animationDelay: '400ms' }}>
             <p className="text-muted-foreground">
-              New to Alle AI?{' '}
+              New to Calo?{' '}
               <button
                 onClick={() => navigate('/welcome')}
                 className="text-foreground font-semibold hover:underline"

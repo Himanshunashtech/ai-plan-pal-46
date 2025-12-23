@@ -110,7 +110,7 @@ export function BadgeCelebration({ badge, onClose, onViewAll }: BadgeCelebration
   }, []);
 
   const handleShare = async (platform: string) => {
-    const shareText = `🎉 I just earned the "${badge.name}" badge on Cal AI! ${badge.description}`;
+    const shareText = `🎉 I just earned the "${badge.name}" badge on Calo! ${badge.description}`;
     const shareUrl = window.location.origin;
 
     switch (platform) {

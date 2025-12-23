@@ -25,7 +25,7 @@ serve(async (req) => {
     // Query OpenFoodFacts API (free, no API key needed)
     const response = await fetch(
       `https://world.openfoodfacts.org/api/v0/product/${barcode}.json`,
-      { headers: { 'User-Agent': 'CalAI-App/1.0' } }
+      { headers: { 'User-Agent': 'Calo-App/1.0' } }
     );
 
     const data = await response.json();
