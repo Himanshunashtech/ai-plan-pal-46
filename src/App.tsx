@@ -7,6 +7,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { OnboardingProvider } from "@/contexts/OnboardingContext";
 import OfflineBanner from "@/components/ui/OfflineBanner";
 import PublicRoute from "@/components/auth/PublicRoute";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import Splash from "./pages/Splash";
 import Welcome from "./pages/Welcome";
 import Auth from "./pages/Auth";
@@ -37,22 +38,28 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <Routes>
+              {/* Public routes - redirect to dashboard if logged in */}
               <Route path="/" element={<PublicRoute><Splash /></PublicRoute>} />
               <Route path="/welcome" element={<PublicRoute><Welcome /></PublicRoute>} />
               <Route path="/auth" element={<PublicRoute><Auth /></PublicRoute>} />
               <Route path="/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
+              
+              {/* Onboarding routes - accessible during signup flow */}
               <Route path="/onboarding" element={<Onboarding />} />
               <Route path="/plan-ready" element={<PlanReady />} />
               <Route path="/paywall" element={<Paywall />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/progress" element={<Progress />} />
-              <Route path="/scanner" element={<Scanner />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/edit-profile" element={<EditProfile />} />
-              <Route path="/nutrition-goals" element={<NutritionGoals />} />
-              <Route path="/notifications" element={<Notifications />} />
-              <Route path="/email-preferences" element={<EmailPreferences />} />
-              <Route path="/milestones" element={<Milestones />} />
+              
+              {/* Protected routes - require authentication */}
+              <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              <Route path="/progress" element={<ProtectedRoute><Progress /></ProtectedRoute>} />
+              <Route path="/scanner" element={<ProtectedRoute><Scanner /></ProtectedRoute>} />
+              <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+              <Route path="/edit-profile" element={<ProtectedRoute><EditProfile /></ProtectedRoute>} />
+              <Route path="/nutrition-goals" element={<ProtectedRoute><NutritionGoals /></ProtectedRoute>} />
+              <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
+              <Route path="/email-preferences" element={<ProtectedRoute><EmailPreferences /></ProtectedRoute>} />
+              <Route path="/milestones" element={<ProtectedRoute><Milestones /></ProtectedRoute>} />
+              
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
