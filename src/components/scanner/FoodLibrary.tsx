@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Search, Plus, Minus, X, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { OptimizedImage } from '@/components/ui/OptimizedImage';
 import { searchFoods, logFoodFromLibrary, FoodSearchResult } from '@/lib/api/food-search';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
@@ -120,16 +119,10 @@ const FoodLibrary = ({ onClose }: FoodLibraryProps) => {
               className="w-full p-4 bg-card rounded-xl flex items-center gap-3 text-left hover:bg-card/80 transition-colors"
             >
               {food.image ? (
-                <OptimizedImage
+                <img
                   src={food.image}
                   alt={food.name}
                   className="w-12 h-12 rounded-lg object-cover bg-muted"
-                  useCdnTransform={false}
-                  fallback={
-                    <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center text-muted-foreground text-lg">
-                      🍽️
-                    </div>
-                  }
                 />
               ) : (
                 <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center text-muted-foreground text-lg">
@@ -159,16 +152,10 @@ const FoodLibrary = ({ onClose }: FoodLibraryProps) => {
 
             <div className="flex items-start gap-4 mb-6">
               {selectedFood.image ? (
-                <OptimizedImage
+                <img
                   src={selectedFood.image}
                   alt={selectedFood.name}
                   className="w-16 h-16 rounded-xl object-cover"
-                  useCdnTransform={false}
-                  fallback={
-                    <div className="w-16 h-16 rounded-xl bg-muted flex items-center justify-center text-2xl">
-                      🍽️
-                    </div>
-                  }
                 />
               ) : (
                 <div className="w-16 h-16 rounded-xl bg-muted flex items-center justify-center text-2xl">

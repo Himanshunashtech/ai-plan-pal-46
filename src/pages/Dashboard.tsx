@@ -8,7 +8,6 @@ import { StreakShareSheet } from '@/components/badges/StreakShareSheet';
 import { BadgeCelebration } from '@/components/badges/BadgeCelebration';
 import NutritionRing from '@/components/ui/NutritionRing';
 import ActivityCarousel from '@/components/dashboard/ActivityCarousel';
-import { FoodThumbnail, FoodDetailImage } from '@/components/ui/OptimizedImage';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBadges } from '@/hooks/useBadges';
@@ -331,16 +330,17 @@ const Dashboard = () => {
                   onClick={() => setSelectedFood(food)}
                   className="w-full bg-card rounded-2xl p-4 shadow-soft flex items-center gap-4 text-left transition-transform active:scale-[0.98]"
                 >
-                  <FoodThumbnail
-                    src={food.image_url}
-                    alt={food.name}
-                    className="w-14 h-14 rounded-xl"
-                    fallback={
-                      <div className="w-14 h-14 rounded-xl bg-secondary flex items-center justify-center">
-                        <span className="text-2xl">🍽️</span>
-                      </div>
-                    }
-                  />
+                  {food.image_url ? (
+                    <img 
+                      src={food.image_url} 
+                      alt={food.name} 
+                      className="w-14 h-14 rounded-xl object-cover"
+                    />
+                  ) : (
+                    <div className="w-14 h-14 rounded-xl bg-secondary flex items-center justify-center">
+                      <span className="text-2xl">🍽️</span>
+                    </div>
+                  )}
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold truncate">{food.name}</p>
                     <p className="text-sm text-muted-foreground">
@@ -381,10 +381,10 @@ const Dashboard = () => {
 
             <div className="flex items-center gap-4 mb-6">
               {selectedFood.image_url ? (
-                <FoodDetailImage
-                  src={selectedFood.image_url}
-                  alt={selectedFood.name}
-                  className="w-20 h-20 rounded-2xl"
+                <img 
+                  src={selectedFood.image_url} 
+                  alt={selectedFood.name} 
+                  className="w-20 h-20 rounded-2xl object-cover"
                 />
               ) : (
                 <div className="w-20 h-20 rounded-2xl bg-secondary flex items-center justify-center">
