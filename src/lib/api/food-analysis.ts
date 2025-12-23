@@ -32,8 +32,23 @@ export interface JobStatus {
   imageUrl?: string;
 }
 
+export interface RateLimitError extends Error {
+  limitReached: boolean;
+  scansUsed: number;
+  scansLimit: number;
+}
+
+export interface EnqueueResult {
+  jobId: string;
+  usage?: {
+    scansUsed: number;
+    scansLimit: number;
+    isPremium: boolean;
+  };
+}
+
 // Enqueue a food analysis job (async)
-export async function enqueueAnalysis(imageBase64: string): Promise<string> {
+export async function enqueueAnalysis(imageBase64: string): Promise<EnqueueResult> {
   const { data, error } = await supabase.functions.invoke('enqueue-food-analysis', {
     body: { imageBase64 }
   });
@@ -42,11 +57,23 @@ export async function enqueueAnalysis(imageBase64: string): Promise<string> {
     throw new Error(error.message || 'Failed to enqueue analysis');
   }
 
+  // Check for rate limit error
+  if (data?.limitReached) {
+    const rateLimitError = new Error(data.error || 'Daily scan limit reached') as RateLimitError;
+    rateLimitError.limitReached = true;
+    rateLimitError.scansUsed = data.scansUsed;
+    rateLimitError.scansLimit = data.scansLimit;
+    throw rateLimitError;
+  }
+
   if (!data?.success) {
     throw new Error(data?.error || 'Failed to enqueue');
   }
 
-  return data.jobId;
+  return {
+    jobId: data.jobId,
+    usage: data.usage
+  };
 }
 
 // Poll for job status
@@ -120,7 +147,7 @@ export async function analyzeFoodAsync(
   onProgress?: (status: string) => void
 ): Promise<FoodAnalysisResult> {
   onProgress?.('Queuing analysis...');
-  const jobId = await enqueueAnalysis(imageBase64);
+  const { jobId } = await enqueueAnalysis(imageBase64);
   return waitForAnalysis(jobId, onProgress);
 }
 

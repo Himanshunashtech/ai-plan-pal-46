@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useCamera } from '@/hooks/useCamera';
-import { analyzeFoodAsync, FoodAnalysisResult } from '@/lib/api/food-analysis';
+import { analyzeFoodAsync, FoodAnalysisResult, RateLimitError } from '@/lib/api/food-analysis';
 import { Button } from '@/components/ui/button';
-import { X, Camera, Zap, Loader2 } from 'lucide-react';
+import { X, Camera, Zap, Loader2, Crown } from 'lucide-react';
 import FoodLabels from './FoodLabels';
 import FoodResultSheet from './FoodResultSheet';
+import { toast } from 'sonner';
 
 interface FoodScannerProps {
   onClose: () => void;
@@ -12,12 +14,15 @@ interface FoodScannerProps {
 }
 
 const FoodScanner = ({ onClose, onFoodLogged }: FoodScannerProps) => {
+  const navigate = useNavigate();
   const { videoRef, isStreaming, error, startCamera, stopCamera, capturePhoto } = useCamera();
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analyzeStatus, setAnalyzeStatus] = useState<string>('');
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [analysisResult, setAnalysisResult] = useState<FoodAnalysisResult | null>(null);
   const [showResult, setShowResult] = useState(false);
+  const [rateLimitReached, setRateLimitReached] = useState(false);
+  const [rateLimitInfo, setRateLimitInfo] = useState<{ used: number; limit: number } | null>(null);
 
   useEffect(() => {
     startCamera();
@@ -31,6 +36,7 @@ const FoodScanner = ({ onClose, onFoodLogged }: FoodScannerProps) => {
     setCapturedImage(photo);
     setIsAnalyzing(true);
     setAnalyzeStatus('Queuing analysis...');
+    setRateLimitReached(false);
 
     try {
       // Use async job queue for better reliability
@@ -39,12 +45,30 @@ const FoodScanner = ({ onClose, onFoodLogged }: FoodScannerProps) => {
       });
       setAnalysisResult(result);
       setShowResult(true);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Analysis error:', err);
-      setAnalyzeStatus('Analysis failed. Please try again.');
+      
+      // Check if it's a rate limit error
+      if (err.limitReached) {
+        setRateLimitReached(true);
+        setRateLimitInfo({ used: err.scansUsed, limit: err.scansLimit });
+        toast.error('Daily scan limit reached', {
+          description: 'Upgrade to Premium for unlimited scans!'
+        });
+      } else {
+        setAnalyzeStatus('Analysis failed. Please try again.');
+        toast.error('Analysis failed', {
+          description: err.message || 'Please try again'
+        });
+      }
     } finally {
       setIsAnalyzing(false);
     }
+  };
+
+  const handleUpgrade = () => {
+    onClose();
+    navigate('/subscription');
   };
 
   const handleRetake = () => {
@@ -120,6 +144,41 @@ const FoodScanner = ({ onClose, onFoodLogged }: FoodScannerProps) => {
         {error && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/80">
             <p className="text-white text-center px-8">{error}</p>
+          </div>
+        )}
+
+        {/* Rate Limit Overlay */}
+        {rateLimitReached && (
+          <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-20">
+            <div className="bg-card rounded-3xl p-6 mx-6 text-center max-w-sm">
+              <div className="w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-4">
+                <Crown className="w-8 h-8 text-amber-500" />
+              </div>
+              <h3 className="text-xl font-bold mb-2">Daily Limit Reached</h3>
+              <p className="text-muted-foreground mb-4">
+                You've used all {rateLimitInfo?.limit} free scans for today. Upgrade to Premium for unlimited scans!
+              </p>
+              <div className="flex gap-3">
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={() => {
+                    setRateLimitReached(false);
+                    setCapturedImage(null);
+                    startCamera();
+                  }}
+                >
+                  Close
+                </Button>
+                <Button 
+                  className="flex-1 bg-gradient-to-r from-amber-500 to-orange-500"
+                  onClick={handleUpgrade}
+                >
+                  <Crown className="w-4 h-4 mr-2" />
+                  Upgrade
+                </Button>
+              </div>
+            </div>
           </div>
         )}
 

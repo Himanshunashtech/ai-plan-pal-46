@@ -29,3 +29,6 @@ verify_jwt = true
 
 [functions.cached-stats]
 verify_jwt = true
+
+[functions.send-branded-email]
+verify_jwt = false
