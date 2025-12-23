@@ -14,6 +14,7 @@ import { useBadges } from '@/hooks/useBadges';
 import { format, startOfDay, endOfDay, subDays, addDays, isSameDay } from 'date-fns';
 import { useSwipe } from '@/hooks/useSwipe';
 import { DashboardSkeleton } from '@/components/skeletons';
+import SubscriptionBadge from '@/components/subscription/SubscriptionBadge';
 
 interface FoodEntry {
   id: string;
@@ -214,6 +215,7 @@ const Dashboard = () => {
           <div className="flex items-center gap-2">
             <span className="text-xl">🔥</span>
             <span className="font-bold text-lg">Cal AI</span>
+            <SubscriptionBadge compact />
           </div>
           <div className="flex items-center gap-1">
             <StreakIcon onClick={() => setShowStreakSheet(true)} />
