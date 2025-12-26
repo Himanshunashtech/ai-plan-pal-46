@@ -3,11 +3,15 @@ import { Home, BarChart3, Scan, User, TrendingUp, TrendingDown, Flame, Beef, Whe
 import { Link, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { useNutritionTrends, useCachedStats } from '@/hooks/useCachedStats';
+import { useCachedStats } from '@/hooks/useCachedStats';
+import { fetchNutritionTrends, fetchWeeklyStats } from '@/store/slices/statsSlice';
+import { useAppDispatch } from '@/store/hooks';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 import { ProgressSkeleton } from '@/components/skeletons';
 import SwipeableChart from '@/components/charts/SwipeableChart';
+import { useHideOnScroll } from '@/hooks/useHideOnScroll';
+
 
 interface DailyData {
   date: string;
@@ -34,17 +38,31 @@ interface UserGoals {
 const Progress = () => {
   const location = useLocation();
   const { user } = useAuth();
+  const dispatch = useAppDispatch();
   const [selectedPeriod, setSelectedPeriod] = useState<'7' | '30' | '90'>('7');
   const [dailyData, setDailyData] = useState<DailyData[]>([]);
   const [goals, setGoals] = useState<UserGoals>({ daily_calories: 2000, daily_protein: 150, daily_carbs: 200, daily_fats: 60, daily_fiber: 25, daily_sugar: 50, daily_sodium: 2300 });
-  const [loading, setLoading] = useState(true);
-  const [initialLoading, setInitialLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // Will be updated in effect
 
   // Use cached nutrition trends for 30-day period
-  const { data: cachedTrends, isCached } = useNutritionTrends(!!user && selectedPeriod === '30');
+  const { nutritionTrends, dailySummary } = useCachedStats();
+  const cachedTrends = nutritionTrends.data;
+  const isCached = !!cachedTrends;
 
-  // Use cached goals
-  const { data: cachedGoals } = useCachedStats<{ profile: UserGoals }>({ type: 'user_goals', enabled: !!user });
+  const [initialLoading, setInitialLoading] = useState(() => {
+    // If we have cached trends and defaulting to 7 or 30 days, we might be able to show something
+    // BUT calculate trends logic below relies on 'selectedPeriod'. 
+    // If selectedPeriod is '30' (default is '7'), we can match. 
+    // Let's rely on the effect to clear it fast, or check selectedPeriod default.
+    return true;
+  });
+  const isNavHidden = useHideOnScroll();
+
+
+
+
+  // Use cached goals from daily summary
+  const goalsData = dailySummary.data?.goals;
 
   const tabs = [
     { id: '7' as const, label: '7 Days' },
@@ -54,24 +72,23 @@ const Progress = () => {
 
   // Apply cached goals on load
   useEffect(() => {
-    if (cachedGoals?.profile) {
-      const p = cachedGoals.profile;
+    if (goalsData) {
       setGoals({
-        daily_calories: p.daily_calories || 2000,
-        daily_protein: p.daily_protein || 150,
-        daily_carbs: p.daily_carbs || 200,
-        daily_fats: p.daily_fats || 60,
-        daily_fiber: p.daily_fiber || 25,
-        daily_sugar: p.daily_sugar || 50,
-        daily_sodium: p.daily_sodium || 2300
+        daily_calories: goalsData.daily_calories || 2000,
+        daily_protein: goalsData.daily_protein || 150,
+        daily_carbs: goalsData.daily_carbs || 200,
+        daily_fats: goalsData.daily_fats || 60,
+        daily_fiber: goalsData.daily_fiber || 25,
+        daily_sugar: goalsData.daily_sugar || 50,
+        daily_sodium: goalsData.daily_sodium || 2300
       });
     }
-  }, [cachedGoals]);
+  }, [goalsData]);
 
-  // Use cached trends for 30-day view if available
+  // Use cached trends for 30-day view OR 7-day view if available
   useEffect(() => {
-    if (selectedPeriod === '30' && cachedTrends?.trends && isCached) {
-      const formattedData = cachedTrends.trends.map(t => ({
+    if ((selectedPeriod === '30' || selectedPeriod === '7') && cachedTrends?.trends && isCached) {
+      let formattedData = cachedTrends.trends.map(t => ({
         date: t.date,
         day: format(new Date(t.date), 'MMM d'),
         calories: t.calories,
@@ -82,6 +99,15 @@ const Progress = () => {
         sugar: t.sugar,
         sodium: t.sodium
       }));
+
+      if (selectedPeriod === '7') {
+        formattedData = formattedData.slice(-7);
+        formattedData = formattedData.map(d => ({
+          ...d,
+          day: format(new Date(d.date), 'EEE')
+        }));
+      }
+
       setDailyData(formattedData);
       setLoading(false);
       setInitialLoading(false);
@@ -90,8 +116,8 @@ const Progress = () => {
 
   useEffect(() => {
     if (user) {
-      // Skip fetch if we have cached data for 30-day period
-      if (selectedPeriod === '30' && cachedTrends?.trends && isCached) {
+      // Skip fetch if we have cached data for 30/7 day period
+      if ((selectedPeriod === '30' || selectedPeriod === '7') && cachedTrends?.trends && isCached) {
         return;
       }
       fetchProgressData().then(() => setInitialLoading(false));
@@ -100,30 +126,117 @@ const Progress = () => {
 
   const fetchProgressData = async () => {
     if (!user) return;
-    
-    setLoading(true);
+
+    // Skip fetch if we have cached data for 30-day period and that's what we want
+    if (selectedPeriod === '30' && cachedTrends?.trends && isCached) {
+      // Logic handled in effect, but if we are here via pull-to-refresh or strict fetch:
+      // We might want to force refresh.
+    } else {
+      setLoading(true);
+    }
+
     try {
-      const days = parseInt(selectedPeriod);
-      const startDate = startOfDay(subDays(new Date(), days - 1)).toISOString();
-      const endDate = endOfDay(new Date()).toISOString();
+      // 30 Days: Use Cached Nutrition Trends
+      if (selectedPeriod === '30') {
+        const result = await dispatch(fetchNutritionTrends(true)).unwrap();
+        if (result.data?.trends) {
+          const formattedData = result.data.trends.map(t => ({
+            date: t.date,
+            day: format(new Date(t.date), 'MMM d'),
+            calories: t.calories,
+            protein: t.protein,
+            carbs: t.carbs,
+            fats: t.fats,
+            fiber: t.fiber,
+            sugar: t.sugar,
+            sodium: t.sodium
+          }));
+          setDailyData(formattedData);
+        }
+      }
+      // 7 Days: Use Cached Weekly Stats
+      else if (selectedPeriod === '7') {
+        const result = await dispatch(fetchWeeklyStats(true)).unwrap();
+        if (result.data?.dailyData) {
+          // Map object to array
+          const dates = Object.keys(result.data.dailyData).sort();
+          // We need last 7 days regardless of data presence to fill gaps
+          const days = 7;
+          const filledData: DailyData[] = [];
 
-      const { data: foods, error: foodsError } = await supabase
-        .from('food_entries')
-        .select('calories, protein, carbs, fats, fiber, sugar, sodium, logged_at')
-        .eq('user_id', user.id)
-        .gte('logged_at', startDate)
-        .lte('logged_at', endDate)
-        .order('logged_at', { ascending: true });
+          for (let i = 0; i < days; i++) {
+            const dateObj = subDays(new Date(), days - 1 - i);
+            const dateKey = format(dateObj, 'yyyy-MM-dd');
+            const dayData = result.data.dailyData[dateKey];
 
-      if (foodsError) throw foodsError;
+            filledData.push({
+              date: dateKey,
+              day: format(dateObj, 'EEE'),
+              calories: dayData?.calories || 0,
+              protein: dayData?.protein || 0,
+              carbs: dayData?.carbs || 0,
+              fats: dayData?.fats || 0,
+              fiber: 0, // Weekly stats might not have fiber/sugar/sodium in cached-stats function? Checked: NO.
+              sugar: 0,
+              sodium: 0
+            });
+          }
+          setDailyData(filledData);
+        }
+      }
+      // 90 Days: Fallback to local fetch (Cached function doesn't support 90d yet)
+      else {
+        const days = parseInt(selectedPeriod);
+        const startDate = startOfDay(subDays(new Date(), days - 1)).toISOString();
+        const endDate = endOfDay(new Date()).toISOString();
 
-      const { data: profile, error: profileError } = await supabase
+        const { data: foods, error: foodsError } = await supabase
+          .from('food_entries')
+          .select('calories, protein, carbs, fats, fiber, sugar, sodium, logged_at')
+          .eq('user_id', user.id)
+          .gte('logged_at', startDate)
+          .lte('logged_at', endDate)
+          .order('logged_at', { ascending: true });
+
+        if (foodsError) throw foodsError;
+
+        // ... (rest of local processing) ...
+        const dailyMap: { [key: string]: DailyData } = {};
+        for (let i = 0; i < days; i++) {
+          const date = subDays(new Date(), days - 1 - i);
+          const key = format(date, 'yyyy-MM-dd');
+          dailyMap[key] = {
+            date: key,
+            day: format(date, days <= 7 ? 'EEE' : 'MMM d'),
+            calories: 0, protein: 0, carbs: 0, fats: 0, fiber: 0, sugar: 0, sodium: 0
+          };
+        }
+        foods?.forEach(food => {
+          const key = format(new Date(food.logged_at), 'yyyy-MM-dd');
+          if (dailyMap[key]) {
+            dailyMap[key].calories += food.calories || 0;
+            dailyMap[key].protein += Number(food.protein) || 0;
+            dailyMap[key].carbs += Number(food.carbs) || 0;
+            dailyMap[key].fats += Number(food.fats) || 0;
+            dailyMap[key].fiber += Number(food.fiber) || 0;
+            dailyMap[key].sugar += Number(food.sugar) || 0;
+            dailyMap[key].sodium += Number(food.sodium) || 0;
+          }
+        });
+        setDailyData(Object.values(dailyMap));
+      }
+
+      // Fetch Goals (always needed) - cached-stats has fetchUserGoals, could use that too but 
+      // let's stick to what we have or allow one direct profile call if not in payload
+      // valid optimization: fetchUserGoals is supported in cached-stats.
+      // But fetchDailySummary also returns goals.
+      // Let's just keep the direct profile fetch for 90d, or use valid cache data if available.
+
+      const { data: profile } = await supabase
         .from('profiles')
         .select('daily_calories, daily_protein, daily_carbs, daily_fats, daily_fiber, daily_sugar, daily_sodium')
         .eq('user_id', user.id)
         .maybeSingle();
-
-      if (profileError) throw profileError;
 
       if (profile) {
         setGoals({
@@ -137,41 +250,6 @@ const Progress = () => {
         });
       }
 
-      // Group by day
-      const dailyMap: { [key: string]: DailyData } = {};
-      
-      // Initialize all days
-      for (let i = 0; i < days; i++) {
-        const date = subDays(new Date(), days - 1 - i);
-        const key = format(date, 'yyyy-MM-dd');
-        dailyMap[key] = {
-          date: key,
-          day: format(date, days <= 7 ? 'EEE' : 'MMM d'),
-          calories: 0,
-          protein: 0,
-          carbs: 0,
-          fats: 0,
-          fiber: 0,
-          sugar: 0,
-          sodium: 0
-        };
-      }
-
-      // Fill in actual data
-      foods?.forEach(food => {
-        const key = format(new Date(food.logged_at), 'yyyy-MM-dd');
-        if (dailyMap[key]) {
-          dailyMap[key].calories += food.calories || 0;
-          dailyMap[key].protein += Number(food.protein) || 0;
-          dailyMap[key].carbs += Number(food.carbs) || 0;
-          dailyMap[key].fats += Number(food.fats) || 0;
-          dailyMap[key].fiber += Number(food.fiber) || 0;
-          dailyMap[key].sugar += Number(food.sugar) || 0;
-          dailyMap[key].sodium += Number(food.sodium) || 0;
-        }
-      });
-
-      setDailyData(Object.values(dailyMap));
     } catch (error) {
       console.error('Error fetching progress data:', error);
     } finally {
@@ -201,8 +279,8 @@ const Progress = () => {
     sodium: daysWithData > 0 ? Math.round(totals.sodium / daysWithData) : 0
   };
 
-  const goalAchievement = goals.daily_calories > 0 
-    ? Math.round((averages.calories / goals.daily_calories) * 100) 
+  const goalAchievement = goals.daily_calories > 0
+    ? Math.round((averages.calories / goals.daily_calories) * 100)
     : 0;
 
   const macroData = [
@@ -225,13 +303,12 @@ const Progress = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col safe-area-top safe-area-bottom">
+    <div className="min-h-screen bg-background flex flex-col safe-area-top safe-area-bottom ">
       <div className="flex-1 px-6 py-6 pb-24 overflow-auto">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-xl font-bold">Analytics</h1>
-          <div className={`flex items-center gap-1 px-3 py-1 rounded-full ${
-            goalAchievement >= 80 && goalAchievement <= 120 ? 'bg-green-100 text-green-600' : 'bg-orange-100 text-orange-600'
-          }`}>
+          <div className={`flex items-center gap-1 px-3 py-1 rounded-full ${goalAchievement >= 80 && goalAchievement <= 120 ? 'bg-green-100 text-green-600' : 'bg-orange-100 text-orange-600'
+            }`}>
             <span className="text-sm font-medium">{goalAchievement}% of goal</span>
           </div>
         </div>
@@ -239,14 +316,13 @@ const Progress = () => {
         {/* Period Tabs */}
         <div className="flex gap-2 mb-6 overflow-x-auto scrollbar-hide">
           {tabs.map((tab) => (
-            <button 
-              key={tab.id} 
+            <button
+              key={tab.id}
               onClick={() => setSelectedPeriod(tab.id)}
-              className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
-                selectedPeriod === tab.id 
-                  ? 'bg-primary text-primary-foreground' 
-                  : 'bg-secondary text-secondary-foreground'
-              }`}
+              className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${selectedPeriod === tab.id
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-secondary text-secondary-foreground'
+                }`}
             >
               {tab.label}
             </button>
@@ -275,17 +351,17 @@ const Progress = () => {
                 <div className="h-48" style={{ width: `${Math.max(dailyData.length * (selectedPeriod === '7' ? 50 : selectedPeriod === '30' ? 25 : 15), 100)}px`, minWidth: '100%' }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={dailyData}>
-                      <XAxis 
-                        dataKey="day" 
-                        axisLine={false} 
+                      <XAxis
+                        dataKey="day"
+                        axisLine={false}
                         tickLine={false}
                         tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-                        interval={0}
+                        interval={selectedPeriod === '7' ? 0 : 29}
                       />
                       <YAxis hide />
-                      <Bar 
-                        dataKey="calories" 
-                        fill="hsl(var(--primary))" 
+                      <Bar
+                        dataKey="calories"
+                        fill="hsl(var(--primary))"
                         radius={[4, 4, 0, 0]}
                       />
                     </BarChart>
@@ -301,12 +377,12 @@ const Progress = () => {
                 <div className="h-48" style={{ width: `${Math.max(dailyData.length * (selectedPeriod === '7' ? 50 : selectedPeriod === '30' ? 25 : 15), 100)}px`, minWidth: '100%' }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={dailyData}>
-                      <XAxis 
-                        dataKey="day" 
-                        axisLine={false} 
+                      <XAxis
+                        dataKey="day"
+                        axisLine={false}
                         tickLine={false}
                         tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-                        interval={0}
+                        interval={selectedPeriod === '7' ? 0 : 29}
                       />
                       <YAxis hide />
                       <Line type="monotone" dataKey="protein" stroke="#ef4444" strokeWidth={2} dot={false} />
@@ -339,12 +415,12 @@ const Progress = () => {
                 <div className="h-48" style={{ width: `${Math.max(dailyData.length * (selectedPeriod === '7' ? 50 : selectedPeriod === '30' ? 25 : 15), 100)}px`, minWidth: '100%' }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={dailyData}>
-                      <XAxis 
-                        dataKey="day" 
-                        axisLine={false} 
+                      <XAxis
+                        dataKey="day"
+                        axisLine={false}
                         tickLine={false}
                         tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-                        interval={0}
+                        interval={selectedPeriod === '7' ? 0 : 29}
                       />
                       <YAxis hide />
                       <Line type="monotone" dataKey="fiber" stroke="hsl(142, 76%, 36%)" strokeWidth={2} dot={false} />
@@ -463,11 +539,10 @@ const Progress = () => {
                     {dailyData[dailyData.length - 1]?.calories || 0} / {averages.calories} cal
                   </p>
                 </div>
-                <div className={`flex items-center gap-1 px-3 py-1 rounded-full ${
-                  (dailyData[dailyData.length - 1]?.calories || 0) > averages.calories 
-                    ? 'bg-orange-100 text-orange-600' 
-                    : 'bg-green-100 text-green-600'
-                }`}>
+                <div className={`flex items-center gap-1 px-3 py-1 rounded-full ${(dailyData[dailyData.length - 1]?.calories || 0) > averages.calories
+                  ? 'bg-orange-100 text-orange-600'
+                  : 'bg-green-100 text-green-600'
+                  }`}>
                   {(dailyData[dailyData.length - 1]?.calories || 0) > averages.calories ? (
                     <TrendingUp className="w-4 h-4" />
                   ) : (
@@ -506,7 +581,7 @@ const Progress = () => {
             {/* Motivation Message */}
             {daysWithData > 0 && (
               <p className="text-center text-sm mt-6 p-4 bg-secondary/50 rounded-2xl">
-                {goalAchievement >= 80 && goalAchievement <= 120 
+                {goalAchievement >= 80 && goalAchievement <= 120
                   ? "🎉 Great job! You're hitting your calorie goals consistently!"
                   : goalAchievement < 80
                     ? "💪 Keep going! Try to get closer to your daily calorie goal."
@@ -517,23 +592,50 @@ const Progress = () => {
         )}
       </div>
 
-      <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border safe-area-bottom">
-        <div className="flex justify-around py-3">
-          {[
-            { icon: Home, path: '/dashboard', label: 'Home' },
-            { icon: BarChart3, path: '/progress', label: 'Analytics' },
-            { icon: Scan, path: '/scanner', label: 'Scan' },
-            { icon: User, path: '/profile', label: 'Settings' },
-          ].map(({ icon: Icon, path, label }) => (
-            <Link key={path} to={path} className={`flex flex-col items-center gap-1 px-4 ${
-              location.pathname === path ? 'text-primary' : 'text-muted-foreground'
-            }`}>
-              <Icon className="w-6 h-6" />
-              <span className="text-xs">{label}</span>
-            </Link>
-          ))}
+      <nav
+        className={`fixed bottom-0 left-0 right-0 bg-card border-t border-border safe-area-bottom
+  transition-transform duration-300 ease-out
+  ${isNavHidden ? 'translate-y-full' : 'translate-y-0'}`}
+      >
+        <div className="relative grid grid-cols-3 items-center py-2">
+          {/* Home */}
+          <Link
+            to="/dashboard"
+            className={`flex flex-col items-center gap-0.5 ${location.pathname === '/dashboard'
+              ? 'text-primary'
+              : 'text-muted-foreground'
+              }`}
+          >
+            <svg className="w-6 h-6 mb-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+            <span className="text-[10px]">Home</span>
+          </Link>
+
+          {/* Analytics */}
+          <Link
+            to="/progress"
+            className={`flex flex-col items-center gap-0.5 ${location.pathname === '/progress'
+              ? 'text-primary'
+              : 'text-muted-foreground'
+              }`}
+          >
+            <svg className="w-6 h-6 mb-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+            <span className="text-[10px]">Analytics</span>
+          </Link>
+
+          {/* Settings */}
+          <Link
+            to="/profile"
+            className={`flex flex-col items-center gap-0.5 ${location.pathname === '/profile'
+              ? 'text-primary'
+              : 'text-muted-foreground'
+              }`}
+          >
+            <svg className="w-6 h-6 mb-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            <span className="text-[10px]">Settings</span>
+          </Link>
         </div>
       </nav>
+
     </div>
   );
 };

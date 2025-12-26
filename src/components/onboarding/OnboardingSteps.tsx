@@ -1,34 +1,65 @@
 import { useNavigate } from 'react-router-dom';
-import { useOnboarding } from '@/contexts/OnboardingContext';
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState } from '@/store';
+import { nextStep, updateData, setGeneratedPlan } from '@/store/slices/onboardingSlice';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Slider } from '@/components/ui/slider';
+import { WheelPicker } from '@/components/ui/WheelPicker';
 import { useState } from 'react';
 import { Check, Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 const OnboardingSteps = () => {
   const navigate = useNavigate();
-  const { step, data, updateData, nextStep, setGeneratedPlan } = useOnboarding();
+  const dispatch = useDispatch();
+  const { step, data } = useSelector((state: RootState) => state.onboarding);
   const [isGenerating, setIsGenerating] = useState(false);
 
   const handleNext = () => {
-    if (step === 27) {
+    if (step === 15) {
       generatePlan();
     } else {
-      nextStep();
+      dispatch(nextStep());
     }
   };
 
+  const [generationProgress, setGenerationProgress] = useState(0);
+  const [generationStatus, setGenerationStatus] = useState("Analyzing your profile...");
+
   const generatePlan = async () => {
     setIsGenerating(true);
-    // Simulate AI plan generation
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
+
+    // Multi-step progress simulation
+    const steps = [
+      { p: 15, s: "Analyzing your metabolic profile..." },
+      { p: 35, s: "Calculating optimal deficit..." },
+      { p: 55, s: "Estimating your metabolic age..." },
+      { p: 85, s: "Perfecting your macro split..." },
+      { p: 100, s: "Your plan is ready!" }
+    ];
+
+    let currentP = 0;
+    for (const step of steps) {
+      setGenerationStatus(step.s);
+      const targetP = step.p;
+      const diff = targetP - currentP;
+      const frames = 30; // 30 frames per segment for smoothness
+      const frameDuration = 40; // 40ms per frame
+
+      for (let i = 1; i <= frames; i++) {
+        const progress = currentP + (diff * (i / frames));
+        setGenerationProgress(Math.round(progress));
+        await new Promise(r => setTimeout(r, frameDuration));
+      }
+      currentP = targetP;
+      await new Promise(r => setTimeout(r, 100));
+    }
+
     // Calculate plan based on user data
-    const bmr = data.gender === 'male' 
+    const bmr = data.gender === 'male'
       ? 88.362 + (13.397 * (data.currentWeight || 70)) + (4.799 * (data.height || 170)) - (5.677 * (data.age || 25))
       : 447.593 + (9.247 * (data.currentWeight || 60)) + (3.098 * (data.height || 160)) - (4.330 * (data.age || 25));
-    
+
     const activityMultipliers: Record<string, number> = {
       sedentary: 1.2,
       light: 1.375,
@@ -36,47 +67,134 @@ const OnboardingSteps = () => {
       active: 1.725,
       very_active: 1.9
     };
-    
+
     const tdee = bmr * (activityMultipliers[data.activityLevel || 'moderate'] || 1.55);
     let dailyCalories = Math.round(tdee);
-    
+
     if (data.goal === 'lose') dailyCalories -= 500;
     if (data.goal === 'gain') dailyCalories += 300;
-    
-    setGeneratedPlan({
+
+    dispatch(setGeneratedPlan({
       dailyCalories,
       dailyCarbs: Math.round(dailyCalories * 0.45 / 4),
       dailyProtein: Math.round(dailyCalories * 0.30 / 4),
       dailyFats: Math.round(dailyCalories * 0.25 / 9),
       targetWeight: data.targetWeight || data.currentWeight || 65,
-      recommendation: data.goal === 'lose' 
+      recommendation: data.goal === 'lose'
         ? 'Based on your profile, we recommend a moderate calorie deficit for sustainable weight loss.'
         : data.goal === 'gain'
-        ? 'Based on your profile, we recommend a slight calorie surplus to support muscle growth.'
-        : 'Based on your profile, we recommend maintaining your current intake for stable weight.'
-    });
-    
+          ? 'Based on your profile, we recommend a slight calorie surplus to support muscle growth.'
+          : 'Based on your profile, we recommend maintaining your current intake for stable weight.'
+    }));
+
     setIsGenerating(false);
     navigate('/plan-ready');
   };
 
   const handleOptionSelect = (key: string, value: any) => {
-    updateData({ [key]: value });
+    dispatch(updateData({ [key]: value }));
+  };
+
+  const isStepValid = () => {
+    switch (step) {
+      case 1: return !!data.fullName?.trim();
+      case 2: return !!data.gender;
+      case 3: return true; // Default value exists
+      case 4: return true; // Default value exists
+      case 5: return true; // Default value exists
+      case 6: return !!data.goal;
+      case 7: return true; // Default value exists
+      case 8: return true; // New Interstitial
+      case 9: return true; // New Interstitial
+      case 10: return !!data.activityLevel;
+      case 11: return !!data.dietType;
+      case 12: return true; // New Interstitial
+      case 13: return true; // Default value exists
+      default: return true;
+    }
   };
 
   const renderStep = () => {
+    if (isGenerating) {
+      return (
+        <div className="flex flex-col h-full bg-background animate-in fade-in duration-500">
+          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+            <div className="w-full max-w-sm mb-12">
+              <div className="flex items-end justify-center mb-6">
+                <span className="text-xl font-black text-foreground tracking-tighter">{generationProgress}%</span>
+              </div>
+
+              <div className="w-full h-3 bg-muted/20 rounded-full overflow-hidden relative">
+                <div
+                  className="absolute top-0 left-0 h-full bg-primary transition-all duration-300 ease-out rounded-full"
+                  style={{ width: `${generationProgress}%` }}
+                />
+                <div
+                  className="absolute top-0 left-0 h-full bg-primary/30 blur-sm transition-all duration-300 ease-out rounded-full"
+                  style={{ width: `${generationProgress}%` }}
+                />
+              </div>
+            </div>
+
+            <p className="text-muted-foreground text-lg mb-12 h-8 transition-all duration-700 ease-in-out font-medium">{generationStatus}</p>
+
+            <div className="w-full max-w-sm bg-card border border-border/50 rounded-[2.5rem] p-8 shadow-xl">
+              <h3 className="text-xl font-bold mb-6 text-left">Daily recommendation for</h3>
+              <div className="space-y-4">
+                {[
+                  { label: 'Calories', p: 20, delay: '75ms' },
+                  { label: 'Carbs', p: 40, delay: '150ms' },
+                  { label: 'Protein', p: 60, delay: '225ms' },
+                  { label: 'Fats', p: 80, delay: '300ms' },
+
+                ].map((item) => (
+                  <div
+                    key={item.label}
+                    className={cn(
+                      "flex items-center justify-between group transition-all duration-700 ease-out",
+                      generationProgress >= item.p ? "opacity-100 translate-y-0" : "opacity-40 translate-y-1"
+                    )}
+                    style={{ transitionDelay: generationProgress >= item.p ? item.delay : '0ms' }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={cn(
+                        "w-1.5 h-1.5 rounded-full transition-all duration-500",
+                        generationProgress >= item.p ? "bg-primary scale-110" : "bg-muted-foreground/30 scale-100"
+                      )} />
+                      <span className={cn(
+                        "text-lg font-medium transition-colors duration-500",
+                        generationProgress >= item.p ? "text-foreground" : "text-muted-foreground/40"
+                      )}>
+                        {item.label}
+                      </span>
+                    </div>
+                    <div className={cn(
+                      "w-7 h-7 rounded-full flex items-center justify-center transition-all duration-700 cubic-bezier(0.34, 1.56, 0.64, 1) transform",
+                      generationProgress >= item.p ? "bg-foreground text-background scale-100 rotate-0" : "bg-muted/30 scale-50 rotate-[-45deg]"
+                    )}>
+                      {generationProgress >= item.p && <Check className="w-4 h-4" />}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     switch (step) {
       case 1:
         return (
-          <div className="animate-fade-in flex flex-col h-full">
-            <div className="flex-1">
+          <div className="flex flex-col h-full">
+            <div className="flex-1 px-3">
               <span className="text-xs font-medium text-primary uppercase tracking-wide">Step 1 • Let's get started</span>
               <h2 className="text-2xl font-bold mb-2 mt-2 text-foreground">What's your name?</h2>
-              <p className="text-muted-foreground mb-8">We'd love to get to know you better.</p>
+              <p className="text-muted-foreground mb-8">We'd love to get to know you better. We're here to help.</p>
               <Input
                 placeholder="Enter your name"
                 value={data.fullName || ''}
-                onChange={(e) => updateData({ fullName: e.target.value })}
+                onChange={(e) => dispatch(updateData({ fullName: e.target.value }))}
                 className="h-14 text-lg rounded-2xl"
                 autoFocus
               />
@@ -86,7 +204,7 @@ const OnboardingSteps = () => {
 
       case 2:
         return (
-          <div className="animate-fade-in flex flex-col h-full">
+          <div className="flex flex-col h-full">
             <div className="flex-1">
               <span className="text-xs font-medium text-primary uppercase tracking-wide">Step 2 • Basic Info</span>
               <h2 className="text-2xl font-bold mb-2 mt-2 text-foreground">Choose your Gender</h2>
@@ -116,153 +234,125 @@ const OnboardingSteps = () => {
 
       case 3:
         return (
-          <div className="animate-fade-in flex flex-col h-full">
-            <div className="flex-1">
+          <div className="flex flex-col h-full">
+            <div className="flex-1 flex flex-col items-center">
               <h2 className="text-2xl font-bold mb-2 text-foreground">How old are you?</h2>
-              <p className="text-muted-foreground mb-8">Your age helps us calculate your metabolism.</p>
-              <div className="flex flex-col items-center gap-6">
-                <div className="text-6xl font-bold text-foreground">{data.age || 25}</div>
-                <Slider
-                  value={[data.age || 25]}
-                  onValueChange={(value) => updateData({ age: value[0] })}
-                  min={13}
-                  max={100}
-                  step={1}
-                  className="w-full"
-                />
-                <div className="flex justify-between w-full text-sm text-muted-foreground">
-                  <span>13</span>
-                  <span>100</span>
-                </div>
-              </div>
+              <p className="text-muted-foreground mb-12">Your age helps us calculate your metabolism.</p>
+              <WheelPicker
+                value={data.age || 25}
+                min={13}
+                max={100}
+                onChange={(value) => dispatch(updateData({ age: value }))}
+                className="w-full max-w-xs"
+              />
             </div>
           </div>
         );
 
       case 4:
+        const isFt = data.heightUnit === 'ft';
+        const height = data.height || (isFt ? 67 : 170); // Default to 67 inches (5'7") or 170 cm
+        const feet = Math.floor(height / 12);
+        const inches = Math.round(height % 12);
+
         return (
-          <div className="animate-fade-in flex flex-col h-full">
-            <div className="flex-1">
+          <div className="flex flex-col h-full">
+            <div className="flex-1 flex flex-col items-center">
               <h2 className="text-2xl font-bold mb-2 text-foreground">What's your height?</h2>
               <p className="text-muted-foreground mb-8">Enter your height to personalize your plan.</p>
-              <div className="flex gap-2 mb-6">
+              <div className="flex gap-2 mb-12 w-full max-w-xs">
                 <Button
                   variant={data.heightUnit === 'cm' ? 'default' : 'outline'}
-                  onClick={() => updateData({ heightUnit: 'cm' })}
+                  onClick={() => dispatch(updateData({ heightUnit: 'cm' }))}
                   className="flex-1"
                 >
                   cm
                 </Button>
                 <Button
                   variant={data.heightUnit === 'ft' ? 'default' : 'outline'}
-                  onClick={() => updateData({ heightUnit: 'ft' })}
+                  onClick={() => dispatch(updateData({ heightUnit: 'ft' }))}
                   className="flex-1"
                 >
                   ft
                 </Button>
               </div>
-              <div className="flex flex-col items-center gap-6">
-                <div className="text-6xl font-bold text-foreground">
-                  {data.height || 170}
-                  <span className="text-2xl ml-1">{data.heightUnit || 'cm'}</span>
+
+              {isFt ? (
+                <div className="flex gap-8 items-center justify-center w-full max-w-xs">
+                  <div className="flex flex-col items-center flex-1">
+                    <WheelPicker
+                      value={feet}
+                      min={4}
+                      max={8}
+                      onChange={(f) => dispatch(updateData({ height: f * 12 + inches }))}
+                      className="w-full"
+                    />
+                    <span className="text-muted-foreground mt-4 font-bold">ft</span>
+                  </div>
+                  <div className="flex flex-col items-center flex-1">
+                    <WheelPicker
+                      value={inches}
+                      min={0}
+                      max={11}
+                      onChange={(i) => dispatch(updateData({ height: feet * 12 + i }))}
+                      className="w-full"
+                    />
+                    <span className="text-muted-foreground mt-4 font-bold">in</span>
+                  </div>
                 </div>
-                <Slider
-                  value={[data.height || 170]}
-                  onValueChange={(value) => updateData({ height: value[0] })}
-                  min={data.heightUnit === 'ft' ? 4 : 120}
-                  max={data.heightUnit === 'ft' ? 8 : 220}
-                  step={1}
-                  className="w-full"
-                />
-              </div>
+              ) : (
+                <div className="flex flex-col items-center w-full max-w-xs">
+                  <WheelPicker
+                    value={height}
+                    min={120}
+                    max={220}
+                    onChange={(value) => dispatch(updateData({ height: value }))}
+                    className="w-full"
+                  />
+                  <span className="text-muted-foreground mt-4 font-bold">cm</span>
+                </div>
+              )}
             </div>
           </div>
         );
 
       case 5:
         return (
-          <div className="animate-fade-in flex flex-col h-full">
-            <div className="flex-1">
-              <h2 className="text-2xl font-bold mb-2 text-foreground">What motivates you?</h2>
-              <p className="text-muted-foreground mb-8">Select all that apply to you.</p>
-              <div className="space-y-3">
-                {[
-                  { value: 'health', label: 'Improve overall health', icon: '❤️' },
-                  { value: 'energy', label: 'Have more energy', icon: '⚡' },
-                  { value: 'confidence', label: 'Feel more confident', icon: '💪' },
-                  { value: 'fitness', label: 'Get in better shape', icon: '🏃' },
-                  { value: 'longevity', label: 'Live a longer life', icon: '🌟' }
-                ].map((m) => {
-                  const isSelected = data.motivation?.includes(m.value);
-                  return (
-                    <Button
-                      key={m.value}
-                      variant={isSelected ? 'option-selected' : 'option'}
-                      size="lg"
-                      className="w-full justify-start gap-3"
-                      onClick={() => {
-                        const current = data.motivation || [];
-                        if (isSelected) {
-                          updateData({ motivation: current.filter((v: string) => v !== m.value) });
-                        } else {
-                          updateData({ motivation: [...current, m.value] });
-                        }
-                      }}
-                    >
-                      <span>{m.icon}</span>
-                      {m.label}
-                      {isSelected && <Check className="w-5 h-5 ml-auto" />}
-                    </Button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        );
-
-      case 6:
-        return (
-          <div className="animate-fade-in flex flex-col h-full">
-            <div className="flex-1">
+          <div className="flex flex-col h-full">
+            <div className="flex-1 flex flex-col items-center">
               <h2 className="text-2xl font-bold mb-2 text-foreground">What's your current weight?</h2>
-              <p className="text-muted-foreground mb-8">We'll use this to track your progress.</p>
-              <div className="flex gap-2 mb-6">
+              <p className="text-muted-foreground mb-6">We'll use this to track your progress.</p>
+              <div className="flex gap-2 mb-12 w-full max-w-xs">
                 <Button
                   variant={data.weightUnit === 'kg' ? 'default' : 'outline'}
-                  onClick={() => updateData({ weightUnit: 'kg' })}
+                  onClick={() => dispatch(updateData({ weightUnit: 'kg' }))}
                   className="flex-1"
                 >
                   kg
                 </Button>
                 <Button
                   variant={data.weightUnit === 'lbs' ? 'default' : 'outline'}
-                  onClick={() => updateData({ weightUnit: 'lbs' })}
+                  onClick={() => dispatch(updateData({ weightUnit: 'lbs' }))}
                   className="flex-1"
                 >
                   lbs
                 </Button>
               </div>
-              <div className="flex flex-col items-center gap-6">
-                <div className="text-6xl font-bold text-foreground">
-                  {data.currentWeight || 70}
-                  <span className="text-2xl ml-1">{data.weightUnit || 'kg'}</span>
-                </div>
-                <Slider
-                  value={[data.currentWeight || 70]}
-                  onValueChange={(value) => updateData({ currentWeight: value[0] })}
-                  min={data.weightUnit === 'lbs' ? 80 : 30}
-                  max={data.weightUnit === 'lbs' ? 400 : 200}
-                  step={1}
-                  className="w-full"
-                />
-              </div>
+              <WheelPicker
+                value={data.currentWeight || 70}
+                min={data.weightUnit === 'lbs' ? 80 : 30}
+                max={data.weightUnit === 'lbs' ? 400 : 200}
+                onChange={(value) => dispatch(updateData({ currentWeight: value }))}
+                className="w-full max-w-xs"
+              />
+              <span className="text-xl font-bold mt-4 text-primary uppercase">{data.weightUnit || 'kg'}</span>
             </div>
           </div>
         );
 
-      case 7:
+      case 6:
         return (
-          <div className="animate-fade-in flex flex-col h-full">
+          <div className="flex flex-col h-full">
             <div className="flex-1">
               <h2 className="text-2xl font-bold mb-2 text-foreground">What is your goal?</h2>
               <p className="text-muted-foreground mb-8">Select your primary fitness goal.</p>
@@ -288,25 +378,89 @@ const OnboardingSteps = () => {
           </div>
         );
 
+      case 7:
+        return (
+          <div className="flex flex-col h-full">
+            <div className="flex-1 flex flex-col items-center">
+              <h2 className="text-2xl font-bold mb-2 text-foreground">What's your target weight?</h2>
+              <p className="text-muted-foreground mb-12">Set your goal weight.</p>
+              <WheelPicker
+                value={data.targetWeight || (data.currentWeight || 70) - 5}
+                min={data.weightUnit === 'lbs' ? 80 : 30}
+                max={data.weightUnit === 'lbs' ? 400 : 200}
+                onChange={(value) => dispatch(updateData({ targetWeight: value }))}
+                className="w-full max-w-xs"
+              />
+              <span className="text-xl font-bold mt-4 text-primary uppercase">{data.weightUnit || 'kg'}</span>
+            </div>
+          </div>
+        );
+
       case 8:
         return (
-          <div className="animate-fade-in flex flex-col h-full">
-            <div className="flex-1">
-              <h2 className="text-2xl font-bold mb-2 text-foreground">What's your target weight?</h2>
-              <p className="text-muted-foreground mb-8">Set your goal weight.</p>
-              <div className="flex flex-col items-center gap-6">
-                <div className="text-6xl font-bold text-foreground">
-                  {data.targetWeight || (data.currentWeight || 70) - 5}
-                  <span className="text-2xl ml-1">{data.weightUnit || 'kg'}</span>
+          <div className="flex flex-col h-full">
+            <div className="flex-1 flex flex-col items-center justify-center text-center px-4">
+              <span className="text-amber-500 font-bold mb-4">Goal & Focus</span>
+              <h2 className="text-3xl font-bold mb-4 text-foreground leading-tight">Counting calories creates Long-term Effect</h2>
+
+
+              <div className="w-full max-w-sm relative aspect-[4/3] bg-background/50 rounded-3xl p-6 border border-border/50 shadow-xl overflow-hidden mb-8">
+                <div className="absolute top-4 left-6 text-muted-foreground text-sm font-medium">Your Weight</div>
+                <div className="w-full h-full flex flex-col justify-end pt-12">
+                  <div className="relative flex-1">
+                    {/* Graph Background Lines */}
+                    <div className="absolute inset-0 border-b border-dashed border-muted/20 pb-1/4"></div>
+                    <div className="absolute inset-0 border-b border-dashed border-muted/20 pb-1/2"></div>
+                    <div className="absolute inset-0 border-b border-dashed border-muted/20 pb-3/4"></div>
+
+                    {/* Green AI Path */}
+                    <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+                      <path
+                        d="M 5,20 Q 30,20 50,60 T 95,90"
+                        fill="none"
+                        stroke="rgb(34, 197, 94)"
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                      />
+                      <circle cx="5" cy="20" r="3" fill="rgb(34, 197, 94)" />
+                      <circle cx="95" cy="90" r="4" fill="white" stroke="rgb(34, 197, 94)" strokeWidth="2" />
+                    </svg>
+
+                    {/* Red Traditional Path */}
+                    <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+                      <path
+                        d="M 5,20 Q 30,30 50,50 T 95,10"
+                        fill="none"
+                        stroke="rgb(239, 68, 68)"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeDasharray="4 2"
+                      />
+                      <circle cx="95" cy="10" r="3" fill="rgb(239, 68, 68)" />
+                    </svg>
+
+                    {/* Labels */}
+                    <div className="absolute bottom-[5%] left-[5%] text-[10px] font-bold text-green-500 bg-green-500/10 px-2 py-0.5 rounded-full">With AI Calorie Counter</div>
+                    <div className="absolute top-[45%] right-[5%] text-[10px] font-bold text-red-500 opacity-80">Traditonal Diet</div>
+                  </div>
+                  <div className="flex justify-between items-center mt-4 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+                    <span>Month 1</span>
+                    <span>Month 6</span>
+                  </div>
                 </div>
-                <Slider
-                  value={[data.targetWeight || (data.currentWeight || 70) - 5]}
-                  onValueChange={(value) => updateData({ targetWeight: value[0] })}
-                  min={data.weightUnit === 'lbs' ? 80 : 30}
-                  max={data.weightUnit === 'lbs' ? 400 : 200}
-                  step={1}
-                  className="w-full"
-                />
+              </div>
+
+              <div className="flex flex-col items-center gap-3">
+                <div className="flex -space-x-2">
+                  {[1, 2, 3, 4].map(i => (
+                    <div key={i} className="w-8 h-8 rounded-full border-2 border-background bg-muted flex items-center justify-center overflow-hidden">
+                      <img src={`https://i.pravatar.cc/100?u=${i + 10}`} alt="Expert" className="w-full h-full object-cover" />
+                    </div>
+                  ))}
+                </div>
+                <p className="text-sm text-muted-foreground font-medium">
+                  Supported by <span className="text-foreground font-bold">16,473</span> experts
+                </p>
               </div>
             </div>
           </div>
@@ -314,7 +468,34 @@ const OnboardingSteps = () => {
 
       case 9:
         return (
-          <div className="animate-fade-in flex flex-col h-full">
+          <div className="flex flex-col h-full">
+            <div className="flex-1 flex flex-col items-center justify-start text-center px-4 pt-8">
+              <span className="text-amber-500 font-bold mb-6">Goal & Focus</span>
+
+              <div className="relative w-64 h-64 mb-12">
+                <div className="absolute inset-0 bg-green-400/20 rounded-full blur-3xl animate-pulse"></div>
+                <div className="relative z-10 w-full h-full rounded-full border-4 border-background overflow-hidden shadow-2xl">
+                  <img
+                    src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&h=400&fit=crop"
+                    alt="Support"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                {/* Floating Badges */}
+                <div className="absolute -top-2 -left-4 w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center text-xl animate-bounce-slow">💪</div>
+                <div className="absolute top-2 -right-4 w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center text-xl animate-bounce-slow [animation-delay:0.5s]">🤝</div>
+                <div className="absolute bottom-4 -right-2 w-16 h-16 bg-white rounded-full shadow-lg flex items-center justify-center text-3xl animate-pulse">❤️</div>
+              </div>
+
+              <h2 className="text-4xl font-bold mb-4 text-foreground leading-tight">We're here for you!</h2>
+
+            </div>
+          </div>
+        );
+
+      case 10:
+        return (
+          <div className="flex flex-col h-full">
             <div className="flex-1">
               <h2 className="text-2xl font-bold mb-2 text-foreground">How active are you?</h2>
               <p className="text-muted-foreground mb-8">Your activity level affects calorie needs.</p>
@@ -324,7 +505,6 @@ const OnboardingSteps = () => {
                   { value: 'light', label: 'Lightly Active', desc: 'Light exercise 1-3 days/week' },
                   { value: 'moderate', label: 'Moderately Active', desc: 'Moderate exercise 3-5 days/week' },
                   { value: 'active', label: 'Very Active', desc: 'Hard exercise 6-7 days/week' },
-                  { value: 'very_active', label: 'Extra Active', desc: 'Very hard exercise & physical job' }
                 ].map((a) => (
                   <Button
                     key={a.value}
@@ -342,38 +522,9 @@ const OnboardingSteps = () => {
           </div>
         );
 
-      case 10:
-        return (
-          <div className="animate-fade-in flex flex-col h-full">
-            <div className="flex-1">
-              <h2 className="text-2xl font-bold mb-2 text-foreground">Weekly weight goal?</h2>
-              <p className="text-muted-foreground mb-8">How fast do you want to reach your goal?</p>
-              <div className="space-y-3">
-                {[
-                  { value: 0.25, label: '0.25 kg/week', desc: 'Slow & steady' },
-                  { value: 0.5, label: '0.5 kg/week', desc: 'Recommended' },
-                  { value: 0.75, label: '0.75 kg/week', desc: 'Moderate' },
-                  { value: 1, label: '1 kg/week', desc: 'Aggressive' }
-                ].map((w) => (
-                  <Button
-                    key={w.value}
-                    variant={data.weeklyGoal === w.value ? 'option-selected' : 'option'}
-                    size="lg"
-                    className="w-full justify-between"
-                    onClick={() => handleOptionSelect('weeklyGoal', w.value)}
-                  >
-                    <span>{w.label}</span>
-                    <span className="text-sm text-muted-foreground">{w.desc}</span>
-                  </Button>
-                ))}
-              </div>
-            </div>
-          </div>
-        );
-
       case 11:
         return (
-          <div className="animate-fade-in flex flex-col h-full">
+          <div className="flex flex-col h-full">
             <div className="flex-1">
               <h2 className="text-2xl font-bold mb-2 text-foreground">What diet do you follow?</h2>
               <p className="text-muted-foreground mb-8">Select your dietary preference.</p>
@@ -402,38 +553,65 @@ const OnboardingSteps = () => {
 
       case 12:
         return (
-          <div className="animate-fade-in flex flex-col h-full">
-            <div className="flex-1">
-              <h2 className="text-2xl font-bold mb-2 text-foreground">Any food allergies?</h2>
-              <p className="text-muted-foreground mb-8">Select all that apply.</p>
-              <div className="space-y-3">
-                {['None', 'Dairy', 'Gluten', 'Nuts', 'Soy', 'Eggs', 'Shellfish'].map((allergy) => {
-                  const isSelected = data.allergies?.includes(allergy);
-                  return (
-                    <Button
-                      key={allergy}
-                      variant={isSelected ? 'option-selected' : 'option'}
-                      size="lg"
-                      className="w-full"
-                      onClick={() => {
-                        const current = data.allergies || [];
-                        if (allergy === 'None') {
-                          updateData({ allergies: ['None'] });
-                        } else {
-                          const filtered = current.filter(a => a !== 'None');
-                          if (isSelected) {
-                            updateData({ allergies: filtered.filter(a => a !== allergy) });
-                          } else {
-                            updateData({ allergies: [...filtered, allergy] });
-                          }
-                        }
-                      }}
-                    >
-                      {allergy}
-                      {isSelected && <Check className="w-5 h-5 ml-auto" />}
-                    </Button>
-                  );
-                })}
+          <div className="flex flex-col h-full">
+            <div className="flex-1 flex flex-col items-center justify-start text-center px-4 pt-4">
+              <h2 className="text-3xl font-bold mb-12 text-foreground leading-tight">Simple direct food scanning, not just barcode scanning!</h2>
+
+              <div className="grid grid-cols-2 gap-4 w-full max-w-md">
+                {/* Traditional Side */}
+                <div className="flex flex-col items-center">
+                  <div className="bg-muted/30 rounded-[2.5rem] p-4  w-full relative overflow-hidden flex flex-col items-center group transition-all duration-500 hover:bg-muted/50 border border-transparent">
+                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-8">Traditional Counter</span>
+                    <div className="flex-1 flex flex-col items-center justify-center text-center p-2 mb-8">
+                      <p className="text-base font-bold text-foreground">Only available for food with barcode</p>
+                    </div>
+                    <div className="mt-auto w-full px-4 mb-4">
+                      <div className="relative w-full aspect-[4/3] bg-muted/20 rounded-2xl overflow-hidden flex items-center justify-center grayscale group-hover:grayscale-0 transition-all duration-700">
+                        <div className="w-20 h-10 bg-white shadow-sm rounded flex items-center justify-center flex-col gap-0.5 transform -rotate-12">
+                          <div className="flex gap-0.5">
+                            {[1, 2, 3, 4, 5, 6].map(i => <div key={i} className="w-1 h-6 bg-black"></div>)}
+                          </div>
+                          <span className="text-[6px] font-mono">2 913456 8906</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* AI Side */}
+                <div className="flex flex-col items-center">
+                  <div className="bg-amber-100 rounded-[2.5rem] p-4  w-full relative overflow-hidden flex flex-col items-center group transition-all duration-500 hover:bg-amber-200 border-2 border-primary/20">
+                    <div className="absolute top-2 right-4 text-green-500 bg-white rounded-full p-1 shadow-sm">
+                      <Check className="w-4 h-4" />
+                    </div>
+                    <span className="text-xs font-bold text-amber-700 uppercase tracking-widest mb-8">AI Calorie Counter</span>
+                    <div className="flex-1 flex flex-col items-center justify-center text-center p-2 mb-8">
+                      <p className="text-base font-extrabold text-amber-900 leading-tight">Simply take a picture of the food to get details</p>
+                    </div>
+                    <div className="mt-auto w-full px-2 mb-4">
+                      <div className="relative w-full aspect-square bg-[#FF8C00] rounded-3xl overflow-hidden flex items-center justify-center p-1 shadow-inner group-hover:scale-105 transition-transform duration-500">
+                        <div className="w-full h-full rounded-2xl overflow-hidden border-2 border-white/30 relative">
+                          <img
+                            src="https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=300&h=300&fit=crop"
+                            alt="Healthy Salad"
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute inset-0 bg-black/5 flex items-center justify-center">
+                            <div className="w-12 h-12 bg-white/90 rounded-full shadow-lg flex items-center justify-center">
+                              <Loader2 className="w-6 h-6 text-primary animate-spin" />
+                            </div>
+                          </div>
+                          {/* Recognition Badge */}
+                          <div className="absolute bottom-2 right-2 bg-green-500 text-white rounded-full p-1.5 shadow-lg animate-bounce-slow">
+                            <div className="bg-white/20 rounded-full p-1">
+                              <span className="text-xs">📸</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -441,388 +619,25 @@ const OnboardingSteps = () => {
 
       case 13:
         return (
-          <div className="animate-fade-in flex flex-col h-full">
-            <div className="flex-1">
-              <h2 className="text-2xl font-bold mb-2 text-foreground">How many meals per day?</h2>
-              <p className="text-muted-foreground mb-8">We'll help you plan your meals.</p>
-              <div className="flex flex-col items-center gap-6">
-                <div className="text-6xl font-bold text-foreground">{data.mealsPerDay || 3}</div>
-                <Slider
-                  value={[data.mealsPerDay || 3]}
-                  onValueChange={(value) => updateData({ mealsPerDay: value[0] })}
-                  min={1}
-                  max={6}
-                  step={1}
-                  className="w-full"
-                />
-                <div className="flex justify-between w-full text-sm text-muted-foreground">
-                  <span>1 meal</span>
-                  <span>6 meals</span>
-                </div>
-              </div>
+          <div className="flex flex-col h-full">
+            <div className="flex-1 flex flex-col items-center">
+              <h2 className="text-2xl font-bold mb-2 text-foreground">How often do you exercise?</h2>
+              <p className="text-muted-foreground mb-12">Days per week you work out.</p>
+              <WheelPicker
+                value={data.exerciseFrequency || 3}
+                min={0}
+                max={7}
+                onChange={(value) => dispatch(updateData({ exerciseFrequency: value }))}
+                className="w-full max-w-xs"
+              />
+              <span className="text-xl font-bold mt-4 text-primary uppercase">days</span>
             </div>
           </div>
         );
 
       case 14:
         return (
-          <div className="animate-fade-in flex flex-col h-full">
-            <div className="flex-1">
-              <h2 className="text-2xl font-bold mb-2 text-foreground">Daily water intake goal?</h2>
-              <p className="text-muted-foreground mb-8">Staying hydrated is key to success.</p>
-              <div className="flex flex-col items-center gap-6">
-                <div className="text-6xl font-bold text-foreground">
-                  {data.waterIntake || 8}
-                  <span className="text-2xl ml-1">glasses</span>
-                </div>
-                <Slider
-                  value={[data.waterIntake || 8]}
-                  onValueChange={(value) => updateData({ waterIntake: value[0] })}
-                  min={4}
-                  max={16}
-                  step={1}
-                  className="w-full"
-                />
-              </div>
-            </div>
-          </div>
-        );
-
-      case 15:
-        return (
-          <div className="animate-fade-in flex flex-col h-full">
-            <div className="flex-1">
-              <h2 className="text-2xl font-bold mb-2 text-foreground">How many hours of sleep?</h2>
-              <p className="text-muted-foreground mb-8">Sleep affects your metabolism and recovery.</p>
-              <div className="flex flex-col items-center gap-6">
-                <div className="text-6xl font-bold text-foreground">
-                  {data.sleepHours || 7}
-                  <span className="text-2xl ml-1">hours</span>
-                </div>
-                <Slider
-                  value={[data.sleepHours || 7]}
-                  onValueChange={(value) => updateData({ sleepHours: value[0] })}
-                  min={4}
-                  max={12}
-                  step={1}
-                  className="w-full"
-                />
-              </div>
-            </div>
-          </div>
-        );
-
-      case 16:
-        return (
-          <div className="animate-fade-in flex flex-col h-full">
-            <div className="flex-1">
-              <h2 className="text-2xl font-bold mb-2 text-foreground">Your stress level?</h2>
-              <p className="text-muted-foreground mb-8">Stress can impact your weight goals.</p>
-              <div className="space-y-3">
-                {[
-                  { value: 'low', label: 'Low', desc: 'Rarely stressed' },
-                  { value: 'medium', label: 'Medium', desc: 'Sometimes stressed' },
-                  { value: 'high', label: 'High', desc: 'Often stressed' }
-                ].map((s) => (
-                  <Button
-                    key={s.value}
-                    variant={data.stressLevel === s.value ? 'option-selected' : 'option'}
-                    size="lg"
-                    className="w-full justify-between"
-                    onClick={() => handleOptionSelect('stressLevel', s.value)}
-                  >
-                    <span>{s.label}</span>
-                    <span className="text-sm text-muted-foreground">{s.desc}</span>
-                  </Button>
-                ))}
-              </div>
-            </div>
-          </div>
-        );
-
-      case 17:
-        return (
-          <div className="animate-fade-in flex flex-col h-full">
-            <div className="flex-1">
-              <h2 className="text-2xl font-bold mb-2 text-foreground">What motivates you?</h2>
-              <p className="text-muted-foreground mb-8">Select all that apply.</p>
-              <div className="space-y-3">
-                {['Look better', 'Feel healthier', 'More energy', 'Improve confidence', 'Medical reasons', 'Sports performance'].map((m) => {
-                  const isSelected = data.motivation?.includes(m);
-                  return (
-                    <Button
-                      key={m}
-                      variant={isSelected ? 'option-selected' : 'option'}
-                      size="lg"
-                      className="w-full"
-                      onClick={() => {
-                        const current = data.motivation || [];
-                        if (isSelected) {
-                          updateData({ motivation: current.filter(x => x !== m) });
-                        } else {
-                          updateData({ motivation: [...current, m] });
-                        }
-                      }}
-                    >
-                      {m}
-                      {isSelected && <Check className="w-5 h-5 ml-auto" />}
-                    </Button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        );
-
-      case 18:
-        return (
-          <div className="animate-fade-in flex flex-col h-full">
-            <div className="flex-1">
-              <h2 className="text-2xl font-bold mb-2 text-foreground">Tried diets before?</h2>
-              <p className="text-muted-foreground mb-8">Have you attempted weight loss diets in the past?</p>
-              <div className="space-y-3">
-                {[
-                  { value: true, label: 'Yes, I have' },
-                  { value: false, label: 'No, this is my first time' }
-                ].map((p) => (
-                  <Button
-                    key={String(p.value)}
-                    variant={data.previousDiets === p.value ? 'option-selected' : 'option'}
-                    size="lg"
-                    className="w-full"
-                    onClick={() => handleOptionSelect('previousDiets', p.value)}
-                  >
-                    {p.label}
-                  </Button>
-                ))}
-              </div>
-            </div>
-          </div>
-        );
-
-      case 19:
-        return (
-          <div className="animate-fade-in flex flex-col h-full">
-            <div className="flex-1">
-              <h2 className="text-2xl font-bold mb-2 text-foreground">Time for cooking?</h2>
-              <p className="text-muted-foreground mb-8">How much time can you spend on meal prep?</p>
-              <div className="space-y-3">
-                {[
-                  { value: 'minimal', label: 'Minimal', desc: '15 mins or less' },
-                  { value: 'moderate', label: 'Moderate', desc: '15-45 mins' },
-                  { value: 'plenty', label: 'Plenty', desc: '45+ mins' }
-                ].map((c) => (
-                  <Button
-                    key={c.value}
-                    variant={data.cookingTime === c.value ? 'option-selected' : 'option'}
-                    size="lg"
-                    className="w-full justify-between"
-                    onClick={() => handleOptionSelect('cookingTime', c.value)}
-                  >
-                    <span>{c.label}</span>
-                    <span className="text-sm text-muted-foreground">{c.desc}</span>
-                  </Button>
-                ))}
-              </div>
-            </div>
-          </div>
-        );
-
-      case 20:
-        return (
-          <div className="animate-fade-in flex flex-col h-full">
-            <div className="flex-1">
-              <h2 className="text-2xl font-bold mb-2 text-foreground">Snacking habits?</h2>
-              <p className="text-muted-foreground mb-8">How often do you snack between meals?</p>
-              <div className="space-y-3">
-                {[
-                  { value: 'rarely', label: 'Rarely', desc: 'Almost never' },
-                  { value: 'sometimes', label: 'Sometimes', desc: 'A few times a week' },
-                  { value: 'often', label: 'Often', desc: 'Every day' }
-                ].map((s) => (
-                  <Button
-                    key={s.value}
-                    variant={data.snacking === s.value ? 'option-selected' : 'option'}
-                    size="lg"
-                    className="w-full justify-between"
-                    onClick={() => handleOptionSelect('snacking', s.value)}
-                  >
-                    <span>{s.label}</span>
-                    <span className="text-sm text-muted-foreground">{s.desc}</span>
-                  </Button>
-                ))}
-              </div>
-            </div>
-          </div>
-        );
-
-      case 21:
-        return (
-          <div className="animate-fade-in flex flex-col h-full">
-            <div className="flex-1">
-              <h2 className="text-2xl font-bold mb-2 text-foreground">How often do you exercise?</h2>
-              <p className="text-muted-foreground mb-8">Days per week you work out.</p>
-              <div className="flex flex-col items-center gap-6">
-                <div className="text-6xl font-bold text-foreground">
-                  {data.exerciseFrequency || 3}
-                  <span className="text-2xl ml-1">days</span>
-                </div>
-                <Slider
-                  value={[data.exerciseFrequency || 3]}
-                  onValueChange={(value) => updateData({ exerciseFrequency: value[0] })}
-                  min={0}
-                  max={7}
-                  step={1}
-                  className="w-full"
-                />
-              </div>
-            </div>
-          </div>
-        );
-
-      case 22:
-        return (
-          <div className="animate-fade-in flex flex-col h-full">
-            <div className="flex-1">
-              <h2 className="text-2xl font-bold mb-2 text-foreground">Types of exercise?</h2>
-              <p className="text-muted-foreground mb-8">Select all that apply.</p>
-              <div className="space-y-3">
-                {['Walking', 'Running', 'Gym/Weights', 'Yoga', 'Swimming', 'Cycling', 'Sports', 'None'].map((e) => {
-                  const isSelected = data.exerciseType?.includes(e);
-                  return (
-                    <Button
-                      key={e}
-                      variant={isSelected ? 'option-selected' : 'option'}
-                      size="lg"
-                      className="w-full"
-                      onClick={() => {
-                        const current = data.exerciseType || [];
-                        if (e === 'None') {
-                          updateData({ exerciseType: ['None'] });
-                        } else {
-                          const filtered = current.filter(x => x !== 'None');
-                          if (isSelected) {
-                            updateData({ exerciseType: filtered.filter(x => x !== e) });
-                          } else {
-                            updateData({ exerciseType: [...filtered, e] });
-                          }
-                        }
-                      }}
-                    >
-                      {e}
-                      {isSelected && <Check className="w-5 h-5 ml-auto" />}
-                    </Button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        );
-
-      case 23:
-        return (
-          <div className="animate-fade-in flex flex-col h-full">
-            <div className="flex-1">
-              <h2 className="text-2xl font-bold mb-2 text-foreground">Any health conditions?</h2>
-              <p className="text-muted-foreground mb-8">Select all that apply.</p>
-              <div className="space-y-3">
-                {['None', 'Diabetes', 'High blood pressure', 'Heart disease', 'Thyroid issues', 'PCOS', 'Other'].map((h) => {
-                  const isSelected = data.healthConditions?.includes(h);
-                  return (
-                    <Button
-                      key={h}
-                      variant={isSelected ? 'option-selected' : 'option'}
-                      size="lg"
-                      className="w-full"
-                      onClick={() => {
-                        const current = data.healthConditions || [];
-                        if (h === 'None') {
-                          updateData({ healthConditions: ['None'] });
-                        } else {
-                          const filtered = current.filter(x => x !== 'None');
-                          if (isSelected) {
-                            updateData({ healthConditions: filtered.filter(x => x !== h) });
-                          } else {
-                            updateData({ healthConditions: [...filtered, h] });
-                          }
-                        }
-                      }}
-                    >
-                      {h}
-                      {isSelected && <Check className="w-5 h-5 ml-auto" />}
-                    </Button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        );
-
-      case 24:
-        return (
-          <div className="animate-fade-in flex flex-col h-full">
-            <div className="flex-1">
-              <h2 className="text-2xl font-bold mb-2 text-foreground">Taking any medications?</h2>
-              <p className="text-muted-foreground mb-8">Some medications can affect weight.</p>
-              <div className="space-y-3">
-                {[
-                  { value: true, label: 'Yes' },
-                  { value: false, label: 'No' }
-                ].map((m) => (
-                  <Button
-                    key={String(m.value)}
-                    variant={data.medications === m.value ? 'option-selected' : 'option'}
-                    size="lg"
-                    className="w-full"
-                    onClick={() => handleOptionSelect('medications', m.value)}
-                  >
-                    {m.label}
-                  </Button>
-                ))}
-              </div>
-            </div>
-          </div>
-        );
-
-      case 25:
-        return (
-          <div className="animate-fade-in flex flex-col h-full">
-            <div className="flex-1">
-              <h2 className="text-2xl font-bold mb-2 text-foreground">When do you want to reach your goal?</h2>
-              <p className="text-muted-foreground mb-8">Set a target date for motivation.</p>
-              <div className="space-y-3">
-                {[
-                  { months: 1, label: '1 month' },
-                  { months: 3, label: '3 months' },
-                  { months: 6, label: '6 months' },
-                  { months: 12, label: '1 year' }
-                ].map((t) => {
-                  const isSelected = data.targetMonths === t.months;
-                  return (
-                    <Button
-                      key={t.months}
-                      variant={isSelected ? 'option-selected' : 'option'}
-                      size="lg"
-                      className="w-full"
-                      onClick={() => {
-                        const targetDate = new Date();
-                        targetDate.setMonth(targetDate.getMonth() + t.months);
-                        updateData({ targetMonths: t.months, targetDate: targetDate.toISOString().split('T')[0] });
-                      }}
-                    >
-                      {t.label}
-                      {isSelected && <Check className="w-5 h-5 ml-auto" />}
-                    </Button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        );
-
-      case 26:
-        return (
-          <div className="animate-fade-in flex flex-col h-full">
+          <div className="flex flex-col h-full">
             <div className="flex-1 flex flex-col items-center justify-center text-center">
               <div className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center mb-6">
                 <span className="text-4xl">🎯</span>
@@ -849,14 +664,14 @@ const OnboardingSteps = () => {
           </div>
         );
 
-      case 27:
+      case 15:
         return (
           <div className="animate-fade-in flex flex-col h-full">
             <div className="flex-1 flex flex-col items-center justify-center text-center">
               <div className="w-32 h-32 bg-primary/10 rounded-full flex items-center justify-center mb-6">
                 <span className="text-5xl">✨</span>
               </div>
-              <h2 className="text-2xl font-bold mb-4 text-foreground">Cal AI creates long-term results</h2>
+              <h2 className="text-2xl font-bold mb-4 text-foreground">Calo AI creates long-term results</h2>
               <p className="text-muted-foreground mb-8">
                 Our AI-powered system analyzes your unique profile to create a sustainable nutrition plan that adapts to your lifestyle and helps you achieve lasting results.
               </p>
@@ -885,27 +700,40 @@ const OnboardingSteps = () => {
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      <div className="flex-1 overflow-y-auto pb-4">{renderStep()}</div>
-      <div className="flex-shrink-0 pt-4 pb-safe bg-background">
-        <Button 
-          size="lg" 
-          className="w-full" 
+      {/* Scrollable content */}
+      <div key={step} className="flex-1 overflow-y-auto pb-4 animate-pop-in">
+        {renderStep()}
+      </div>
+
+      {/* Sticky footer */}
+      <div className="sticky bottom-0 bg-background  pb-[calc(1rem+env(safe-area-inset-bottom))]">
+        <Button
+          size="lg"
+          className="w-full transition-all duration-300"
           onClick={handleNext}
-          disabled={isGenerating}
+          disabled={isGenerating || !isStepValid()}
+          style={{
+            opacity: isStepValid() ? 1 : 0.5,
+            backgroundColor: isStepValid() ? 'hsl(var(--foreground))' : undefined,
+            color: isStepValid() ? 'hsl(var(--background))' : undefined
+          }}
         >
           {isGenerating ? (
             <>
               <Loader2 className="w-5 h-5 mr-2 animate-spin" />
               Generating Plan...
             </>
-          ) : step === 27 ? (
+          ) : step === 15 ? (
             'Generate My Plan'
+          ) : step === 9 ? (
+            'Sounds Great'
           ) : (
             'Next'
           )}
         </Button>
       </div>
     </div>
+
   );
 };
 

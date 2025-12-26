@@ -61,7 +61,7 @@ const DeleteAccountDialog = ({ onDeleted }: DeleteAccountDialogProps) => {
 
       // Sign out the user
       await supabase.auth.signOut();
-      
+
       toast.success('Account scheduled for deletion in 30 days');
       setOpen(false);
       onDeleted();
@@ -84,28 +84,30 @@ const DeleteAccountDialog = ({ onDeleted }: DeleteAccountDialogProps) => {
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Delete Your Account?</AlertDialogTitle>
-          <AlertDialogDescription className="space-y-3">
-            <p>
-              Your account will be scheduled for deletion. After 30 days, all your data 
-              will be permanently deleted including:
-            </p>
-            <ul className="list-disc list-inside text-sm space-y-1">
-              <li>Your profile information</li>
-              <li>All food entries and nutrition logs</li>
-              <li>Your progress and streak data</li>
-              <li>All notifications</li>
-            </ul>
-            <p className="font-medium text-foreground">
-              If you log in within 30 days, you can recover your account.
-            </p>
-            <div className="pt-2">
-              <p className="text-sm mb-2">Type <strong>DELETE</strong> to confirm:</p>
-              <Input
-                value={confirmText}
-                onChange={(e) => setConfirmText(e.target.value.toUpperCase())}
-                placeholder="Type DELETE"
-                className="uppercase"
-              />
+          <AlertDialogDescription asChild>
+            <div className="space-y-3 text-sm text-muted-foreground">
+              <p>
+                Your account will be scheduled for deletion. After 30 days, all your data
+                will be permanently deleted including:
+              </p>
+              <ul className="list-disc list-inside space-y-1">
+                <li>Your profile information</li>
+                <li>All food entries and nutrition logs</li>
+                <li>Your progress and streak data</li>
+                <li>All notifications</li>
+              </ul>
+              <p className="font-medium text-foreground">
+                If you log in within 30 days, you can recover your account.
+              </p>
+              <div className="pt-2">
+                <p className="text-sm mb-2">Type <strong>DELETE</strong> to confirm:</p>
+                <Input
+                  value={confirmText}
+                  onChange={(e) => setConfirmText(e.target.value.toUpperCase())}
+                  placeholder="Type DELETE"
+                  className="uppercase"
+                />
+              </div>
             </div>
           </AlertDialogDescription>
         </AlertDialogHeader>

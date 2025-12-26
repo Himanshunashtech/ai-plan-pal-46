@@ -130,7 +130,7 @@ export function EmailPreferences() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3 mb-6">
+      {/* <div className="flex items-center gap-3 mb-6">
         <div className="p-2 rounded-xl bg-primary/10">
           <Mail className="w-5 h-5 text-primary" />
         </div>
@@ -140,7 +140,7 @@ export function EmailPreferences() {
             Choose which emails you'd like to receive
           </p>
         </div>
-      </div>
+      </div> */}
 
       {emailOptions.map((option) => (
         <div key={option.key} className="rounded-2xl border bg-card p-4">

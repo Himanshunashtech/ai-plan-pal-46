@@ -99,9 +99,9 @@ const BarcodeScanner = ({ onClose }: BarcodeScannerProps) => {
   } : null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black flex flex-col">
+    <div className="fixed inset-0 z-15 bg-black flex flex-col">
       {/* Header */}
-      <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-4 py-4 safe-area-top">
+      <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-4 py-4 pt-safe">
         <Button
           variant="ghost"
           size="icon"
@@ -135,7 +135,7 @@ const BarcodeScanner = ({ onClose }: BarcodeScannerProps) => {
               <div className="absolute -top-1 -right-1 w-6 h-6 border-t-4 border-r-4 border-white rounded-tr-xl" />
               <div className="absolute -bottom-1 -left-1 w-6 h-6 border-b-4 border-l-4 border-white rounded-bl-xl" />
               <div className="absolute -bottom-1 -right-1 w-6 h-6 border-b-4 border-r-4 border-white rounded-br-xl" />
-              
+
               {/* Scan line animation */}
               {isScanning && !isLooking && (
                 <div className="absolute left-2 right-2 h-0.5 bg-primary animate-pulse" style={{ top: '50%' }} />
@@ -168,9 +168,9 @@ const BarcodeScanner = ({ onClose }: BarcodeScannerProps) => {
 
       {/* Product Result Sheet */}
       {product && adjustedNutrition && (
-        <div className="absolute bottom-0 left-0 right-0 bg-background rounded-t-3xl safe-area-bottom animate-slide-up">
+        <div className="absolute bottom-0 left-0 right-0 bg-background rounded-t-3xl pb-safe animate-slide-up">
           <div className="w-12 h-1 bg-muted-foreground/30 rounded-full mx-auto mt-3" />
-          
+
           <div className="px-6 pt-4 pb-6">
             {/* Product Info */}
             <div className="flex items-start gap-4 mb-4">
@@ -207,12 +207,11 @@ const BarcodeScanner = ({ onClose }: BarcodeScannerProps) => {
             {product.nutriscore && (
               <div className="flex items-center gap-2 mb-4">
                 <span className="text-sm text-muted-foreground">Nutri-Score:</span>
-                <span className={`px-2 py-0.5 rounded font-bold text-white uppercase ${
-                  product.nutriscore === 'a' ? 'bg-green-500' :
-                  product.nutriscore === 'b' ? 'bg-lime-500' :
-                  product.nutriscore === 'c' ? 'bg-yellow-500' :
-                  product.nutriscore === 'd' ? 'bg-orange-500' : 'bg-red-500'
-                }`}>
+                <span className={`px-2 py-0.5 rounded font-bold text-white uppercase ${product.nutriscore === 'a' ? 'bg-green-500' :
+                    product.nutriscore === 'b' ? 'bg-lime-500' :
+                      product.nutriscore === 'c' ? 'bg-yellow-500' :
+                        product.nutriscore === 'd' ? 'bg-orange-500' : 'bg-red-500'
+                  }`}>
                   {product.nutriscore}
                 </span>
               </div>
@@ -257,7 +256,7 @@ const BarcodeScanner = ({ onClose }: BarcodeScannerProps) => {
 
       {/* Instructions */}
       {!product && !error && (
-        <div className="absolute bottom-8 left-0 right-0 text-center safe-area-bottom">
+        <div className="absolute bottom-8 left-0 right-0 text-center pb-safe">
           <p className="text-white/80 text-sm">Point camera at barcode</p>
         </div>
       )}

@@ -3,15 +3,18 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Check, Sparkles, Bell, Crown, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useOnboarding } from '@/contexts/OnboardingContext';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/store';
 import { subscriptionApi } from '@/lib/api/subscription';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
+
 const Paywall = () => {
+
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { generatedPlan, data } = useOnboarding();
+  const { generatedPlan, data } = useSelector((state: RootState) => state.onboarding);
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('yearly');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -70,25 +73,25 @@ const Paywall = () => {
 
       // Start free trial via RevenueCat
       const result = await subscriptionApi.startFreeTrial(user.id);
-      
+
       if (result.success) {
-        toast({ 
-          title: '🎉 Trial Started!', 
-          description: 'Your 3-day free trial has begun. Enjoy full access!' 
+        toast({
+          title: '🎉 Trial Started!',
+          description: 'Your 3-day free trial has begun. Enjoy full access!'
         });
       } else {
-        toast({ 
-          title: 'Welcome!', 
-          description: 'Enjoy your trial access to all features.' 
+        toast({
+          title: 'Welcome!',
+          description: 'Enjoy your trial access to all features.'
         });
       }
-      
+
       navigate('/dashboard');
     } catch (error) {
       console.error('Subscription error:', error);
-      toast({ 
-        title: 'Welcome!', 
-        description: 'Enjoy your trial access to all features.' 
+      toast({
+        title: 'Welcome!',
+        description: 'Enjoy your trial access to all features.'
       });
       navigate('/dashboard');
     } finally {
@@ -97,8 +100,8 @@ const Paywall = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col safe-area-top safe-area-bottom px-6 py-8">
-      <div className="flex-1 animate-fade-in">
+    <div className="min-h-screen bg-background flex flex-col safe-area-top safe-area-bottom px-6 ">
+      <div className="flex-1 animate-fade-in py-6">
         <h1 className="text-2xl font-bold text-foreground text-center">
           Start your 3-day FREE<br />trial to continue.
         </h1>
@@ -136,9 +139,8 @@ const Paywall = () => {
         <div className="mt-8 grid grid-cols-2 gap-4">
           <button
             onClick={() => setSelectedPlan('monthly')}
-            className={`p-4 rounded-2xl border-2 transition-all relative ${
-              selectedPlan === 'monthly' ? 'border-primary bg-primary/5' : 'border-border'
-            }`}
+            className={`p-4 rounded-2xl border-2 transition-all relative ${selectedPlan === 'monthly' ? 'border-primary bg-primary/5' : 'border-border'
+              }`}
           >
             {selectedPlan === 'monthly' && (
               <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-accent text-accent-foreground text-xs px-2 py-0.5 rounded-full font-medium">
@@ -153,9 +155,8 @@ const Paywall = () => {
           </button>
           <button
             onClick={() => setSelectedPlan('yearly')}
-            className={`p-4 rounded-2xl border-2 transition-all relative ${
-              selectedPlan === 'yearly' ? 'border-primary bg-primary/5' : 'border-border'
-            }`}
+            className={`p-4 rounded-2xl border-2 transition-all relative ${selectedPlan === 'yearly' ? 'border-primary bg-primary/5' : 'border-border'
+              }`}
           >
             <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-success text-success-foreground text-xs px-2 py-0.5 rounded-full font-medium">
               SAVE 50%
@@ -187,8 +188,8 @@ const Paywall = () => {
           )}
         </Button>
         <p className="text-center text-xs text-muted-foreground">
-          {selectedPlan === 'monthly' 
-            ? '3 days free, then $20 per month' 
+          {selectedPlan === 'monthly'
+            ? '3 days free, then $20 per month'
             : '3 days free, then $120 per year ($10/mo)'}
         </p>
       </div>

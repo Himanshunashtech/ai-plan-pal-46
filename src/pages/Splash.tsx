@@ -6,9 +6,11 @@ import { WifiOff, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import alleAiLogo from '@/assets/alle-ai-logo.png';
 
+
 type SplashState = 'loading' | 'checking' | 'offline' | 'redirecting';
 
 const Splash = () => {
+
   const navigate = useNavigate();
   const [state, setState] = useState<SplashState>('loading');
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -38,7 +40,7 @@ const Splash = () => {
     setState('checking');
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      
+
       if (session?.user) {
         setState('redirecting');
         const { data: profile } = await supabase
@@ -46,7 +48,7 @@ const Splash = () => {
           .select('onboarding_completed')
           .eq('user_id', session.user.id)
           .single();
-        
+
         if (profile?.onboarding_completed) {
           navigate('/dashboard', { replace: true });
         } else {

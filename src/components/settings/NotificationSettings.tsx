@@ -12,6 +12,7 @@ import {
 import {
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
@@ -69,17 +70,7 @@ export function NotificationSettings() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="p-2 rounded-xl bg-primary/10">
-          <Bell className="w-5 h-5 text-primary" />
-        </div>
-        <div>
-          <h2 className="text-lg font-semibold">Notifications</h2>
-          <p className="text-sm text-muted-foreground">
-            Manage your reminder preferences
-          </p>
-        </div>
-      </div>
+
 
       {/* Meal Reminders */}
       <div className="rounded-2xl border bg-card p-4">
@@ -122,6 +113,9 @@ export function NotificationSettings() {
             <SheetContent>
               <SheetHeader>
                 <SheetTitle>Meal Reminder Times</SheetTitle>
+                <SheetDescription className="sr-only">
+                  Select the times you would like to be reminded to log your meals.
+                </SheetDescription>
               </SheetHeader>
               <div className="space-y-4 mt-6">
                 {["Breakfast", "Lunch", "Dinner"].map((meal, index) => (

@@ -1,11 +1,11 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'app.lovable.13d75504e73f40669f13b3dbc2b67027',
+  appId: 'com.calo.app',
   appName: 'Calo',
   webDir: 'dist',
   server: {
-    url: 'https://13d75504-e73f-4066-9f13-b3dbc2b67027.lovableproject.com?forceHideBadge=true',
+    url: 'https:caloai.netlify.app/',
     cleartext: true
   },
   plugins: {

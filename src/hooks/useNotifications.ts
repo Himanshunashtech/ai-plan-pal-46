@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -27,7 +27,7 @@ export function useNotifications() {
   const [loading, setLoading] = useState(true);
 
   const fetchNotifications = useCallback(async () => {
-    if (!user) return;
+    if (!user?.id) return;
 
     try {
       const now = new Date().toISOString();
@@ -57,10 +57,10 @@ export function useNotifications() {
     } catch (error) {
       console.error('Error fetching notifications:', error);
     }
-  }, [user]);
+  }, [user?.id]);
 
   const fetchStreak = useCallback(async () => {
-    if (!user) return;
+    if (!user?.id) return;
 
     try {
       const { data, error } = await supabase
@@ -96,7 +96,7 @@ export function useNotifications() {
     } catch (error) {
       console.error('Error fetching streak:', error);
     }
-  }, [user]);
+  }, [user?.id]);
 
   const markAsRead = useCallback(async (notificationId: string) => {
     if (!user) return;
@@ -175,14 +175,17 @@ export function useNotifications() {
     }
   }, [user]);
 
+  const lastFetchedUserId = useRef<string | undefined>(undefined);
+
   useEffect(() => {
-    if (user) {
+    if (user?.id && user.id !== lastFetchedUserId.current) {
+      lastFetchedUserId.current = user.id;
       setLoading(true);
       Promise.all([fetchNotifications(), fetchStreak()]).finally(() => {
         setLoading(false);
       });
     }
-  }, [user, fetchNotifications, fetchStreak]);
+  }, [user?.id, fetchNotifications, fetchStreak]);
 
   return {
     notifications,

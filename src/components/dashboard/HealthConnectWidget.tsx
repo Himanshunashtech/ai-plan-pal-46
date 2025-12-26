@@ -1,6 +1,7 @@
-import { Check, Link2, RefreshCw } from 'lucide-react';
+import { Check, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { useHealthConnect } from '@/hooks/useHealthConnect';
+import { HealthConnectLogo } from '@/components/icons/HealthConnectLogo';
 
 interface HealthConnectWidgetProps {
   onSynced?: (steps: number, caloriesBurned: number) => void;
@@ -18,14 +19,13 @@ export default function HealthConnectWidget({ onSynced }: HealthConnectWidgetPro
 
   if (!isAvailable) {
     return (
-      <div className="rounded-xl p-3 mt-auto bg-muted/50">
+      <div className="rounded-xl pb-8">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
-            <Link2 className="w-4 h-4 text-muted-foreground" />
+            <HealthConnectLogo className="w-4 h-4 grayscale opacity-50" />
           </div>
-          <div className="text-xs leading-tight">
+          <div className="text-xs leading-tight ">
             <p className="font-medium">Health not available</p>
-            <p className="text-muted-foreground">Android Health Connect only</p>
           </div>
         </div>
       </div>
@@ -35,9 +35,8 @@ export default function HealthConnectWidget({ onSynced }: HealthConnectWidgetPro
   return (
     <button
       type="button"
-      className={`rounded-xl p-3 mt-auto text-left transition-all ${
-        isConnected ? 'bg-secondary/60 hover:bg-secondary' : 'bg-muted/50 hover:bg-muted'
-      }`}
+      className={`rounded-xl p-3 mt-auto text-left transition-all ${isConnected ? 'bg-secondary/60 hover:bg-secondary' : 'bg-muted/50 hover:bg-muted'
+        }`}
       onClick={async () => {
         if (isConnected) {
           await syncHealthData();
@@ -56,16 +55,15 @@ export default function HealthConnectWidget({ onSynced }: HealthConnectWidgetPro
     >
       <div className="flex items-center gap-2">
         <div
-          className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${
-            isConnected ? 'bg-primary' : 'bg-muted'
-          }`}
+          className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${isConnected ? 'bg-white shadow-sm ring-1 ring-border/50' : 'bg-muted shadow-sm'
+            }`}
         >
           {isLoading ? (
-            <RefreshCw className="w-4 h-4 text-primary-foreground animate-spin" />
+            <RefreshCw className="w-4 h-4 text-primary animate-spin" />
           ) : isConnected ? (
-            <Check className="w-4 h-4 text-primary-foreground" />
+            <HealthConnectLogo className="w-4 h-4" />
           ) : (
-            <Link2 className="w-4 h-4 text-muted-foreground" />
+            <HealthConnectLogo className="w-4 h-4 grayscale opacity-50" />
           )}
         </div>
         <div className="text-xs leading-tight">

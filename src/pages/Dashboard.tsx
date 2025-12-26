@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Home, BarChart3, Scan, User, ChevronLeft, ChevronRight, X, Flame, Beef, Wheat, Droplets, Heart } from 'lucide-react';
+import { Home, BarChart3, Scan, User, ChevronLeft, ChevronRight, X, Flame, Beef, Wheat, Droplets, Heart, Plus } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { NotificationCenter } from '@/components/notifications/NotificationCenter';
@@ -11,23 +11,19 @@ import ActivityCarousel from '@/components/dashboard/ActivityCarousel';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBadges } from '@/hooks/useBadges';
-import { useDailySummary } from '@/hooks/useCachedStats';
+import { useCachedStats } from '@/hooks/useCachedStats';
 import { format, startOfDay, endOfDay, subDays, addDays, isSameDay } from 'date-fns';
 import { useSwipe } from '@/hooks/useSwipe';
 import { DashboardSkeleton } from '@/components/skeletons';
 import SubscriptionBadge from '@/components/subscription/SubscriptionBadge';
+import { useHideOnScroll } from '@/hooks/useHideOnScroll';
 
-interface FoodEntry {
-  id: string;
-  name: string;
-  calories: number;
-  carbs: number | null;
-  protein: number | null;
-  fats: number | null;
-  image_url: string | null;
-  meal_type: string | null;
-  logged_at: string;
-}
+
+
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { setDailyLog, FoodEntry, fetchDailySummary } from '@/store/slices/statsSlice';
+
+// interface FoodEntry removed (imported from statsSlice)
 
 interface DailyTotals {
   calories: number;
@@ -55,27 +51,27 @@ const calculateHealthScore = (food: FoodEntry, goals: UserGoals): number => {
   const carbs = food.carbs || 0;
   const fats = food.fats || 0;
   const calories = food.calories || 1;
-  
+
   // Protein ratio score (higher protein = better)
   const proteinCalories = protein * 4;
   const proteinRatio = proteinCalories / calories;
   const proteinScore = Math.min(proteinRatio * 100, 40);
-  
+
   // Balanced macro score
   const totalMacros = protein + carbs + fats;
   if (totalMacros === 0) return 50;
-  
+
   const proteinPercent = (protein / totalMacros) * 100;
   const carbPercent = (carbs / totalMacros) * 100;
   const fatPercent = (fats / totalMacros) * 100;
-  
+
   // Ideal: 30% protein, 40% carbs, 30% fat
   const proteinDiff = Math.abs(proteinPercent - 30);
   const carbDiff = Math.abs(carbPercent - 40);
   const fatDiff = Math.abs(fatPercent - 30);
-  
+
   const balanceScore = Math.max(0, 60 - (proteinDiff + carbDiff + fatDiff) / 3);
-  
+
   return Math.round(proteinScore + balanceScore);
 };
 
@@ -95,16 +91,21 @@ const Dashboard = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const dispatch = useAppDispatch();
   const { newlyUnlockedBadge, clearNewlyUnlockedBadge } = useBadges();
-  
+  const isNavHidden = useHideOnScroll();
+
+
   // Use cached stats for goals (fast initial load)
-  const { data: cachedSummary, isCached } = useDailySummary(!!user);
-  
+  const { dailySummary } = useCachedStats();
+  const cachedSummary = dailySummary.data;
+  const isCached = !!cachedSummary;
+
   const [recentFoods, setRecentFoods] = useState<FoodEntry[]>([]);
-  const [dailyTotals, setDailyTotals] = useState<DailyTotals>({ 
-    calories: 0, protein: 0, carbs: 0, fats: 0, fiber: 0, sugar: 0, sodium: 0 
+  const [dailyTotals, setDailyTotals] = useState<DailyTotals>({
+    calories: 0, protein: 0, carbs: 0, fats: 0, fiber: 0, sugar: 0, sodium: 0
   });
-  const [goals, setGoals] = useState<UserGoals>({ 
+  const [goals, setGoals] = useState<UserGoals>({
     daily_calories: 2000, daily_protein: 150, daily_carbs: 200, daily_fats: 60,
     daily_fiber: 25, daily_sugar: 50, daily_sodium: 2300
   });
@@ -132,7 +133,7 @@ const Dashboard = () => {
     onSwipeRight: () => navigateWeek('next'),
   });
 
-  const [initialLoading, setInitialLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(!isCached);
 
   // Use cached goals on initial load for faster display
   useEffect(() => {
@@ -151,101 +152,95 @@ const Dashboard = () => {
 
   useEffect(() => {
     if (user) {
-      fetchDashboardData().then(() => setInitialLoading(false));
+      fetchDashboardData().then(() => {
+        if (initialLoading) setInitialLoading(false);
+      });
     }
   }, [user, selectedDate]);
 
   const fetchDashboardData = async () => {
     if (!user) return;
-    
-    setLoading(true);
+
+    // Only show loading indicator if we don't have cached data and it's the first load
+    // OR if explicitly refreshing.
+    if (!isCached && recentFoods.length === 0) setLoading(true);
+
     try {
-      const dayStart = startOfDay(selectedDate).toISOString();
-      const dayEnd = endOfDay(selectedDate).toISOString();
+      // Use the Redux thunk which calls the cached-stats Supabase function
+      const result = await dispatch(fetchDailySummary(true)).unwrap(); // Force refresh to get latest, but use cache logic in thunk if needed
 
-      const { data: foods, error: foodsError } = await supabase
-        .from('food_entries')
-        .select('*')
-        .eq('user_id', user.id)
-        .gte('logged_at', dayStart)
-        .lte('logged_at', dayEnd)
-        .order('logged_at', { ascending: false });
+      // The thunk already updates Redux state.
+      // We also update local state to keep the component working as is 
+      // (though ideally we should rely solely on Redux selectors).
 
-      if (foodsError) throw foodsError;
-
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('daily_calories, daily_protein, daily_carbs, daily_fats, daily_fiber, daily_sugar, daily_sodium')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (profileError) throw profileError;
-
-      if (foods) {
-        setRecentFoods(foods);
-        const totals = foods.reduce((acc, food) => ({
-          calories: acc.calories + (food.calories || 0),
-          protein: acc.protein + (food.protein || 0),
-          carbs: acc.carbs + (food.carbs || 0),
-          fats: acc.fats + (food.fats || 0),
-          fiber: acc.fiber + ((food as any).fiber || 0),
-          sugar: acc.sugar + ((food as any).sugar || 0),
-          sodium: acc.sodium + ((food as any).sodium || 0)
-        }), { calories: 0, protein: 0, carbs: 0, fats: 0, fiber: 0, sugar: 0, sodium: 0 });
-        setDailyTotals(totals);
+      if (result.data) {
+        if (result.data.entries) {
+          setRecentFoods(result.data.entries);
+        }
+        if (result.data.totals) {
+          setDailyTotals(result.data.totals);
+        }
+        if (result.data.goals) {
+          setGoals({
+            daily_calories: result.data.goals.daily_calories || 2000,
+            daily_protein: result.data.goals.daily_protein || 150,
+            daily_carbs: result.data.goals.daily_carbs || 200,
+            daily_fats: result.data.goals.daily_fats || 60,
+            daily_fiber: result.data.goals.daily_fiber || 25,
+            daily_sugar: result.data.goals.daily_sugar || 50,
+            daily_sodium: result.data.goals.daily_sodium || 2300
+          });
+        }
       }
 
-      if (profile) {
-        setGoals({
-          daily_calories: profile.daily_calories || 2000,
-          daily_protein: profile.daily_protein || 150,
-          daily_carbs: profile.daily_carbs || 200,
-          daily_fats: profile.daily_fats || 60,
-          daily_fiber: (profile as any).daily_fiber || 25,
-          daily_sugar: (profile as any).daily_sugar || 50,
-          daily_sodium: (profile as any).daily_sodium || 2300
-        });
-      }
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
     } finally {
       setLoading(false);
+      if (initialLoading) setInitialLoading(false);
     }
   };
 
-  const caloriesLeft = Math.max(0, goals.daily_calories - dailyTotals.calories);
-  const proteinLeft = Math.max(0, goals.daily_protein - dailyTotals.protein);
-  const carbsLeft = Math.max(0, goals.daily_carbs - dailyTotals.carbs);
-  const fatsLeft = Math.max(0, goals.daily_fats - dailyTotals.fats);
-  const fiberLeft = Math.max(0, goals.daily_fiber - dailyTotals.fiber);
-  const sugarLeft = Math.max(0, goals.daily_sugar - dailyTotals.sugar);
-  const sodiumLeft = Math.max(0, goals.daily_sodium - dailyTotals.sodium);
+  const reduxDailySummary = useAppSelector(state => state.stats.dailySummary);
+  const isToday = isSameDay(selectedDate, new Date());
+
+  // Prefer Redux state for "Today" to show optimistic updates
+  const displayFoods = isToday ? (reduxDailySummary.data?.entries || recentFoods) : recentFoods;
+  const displayTotals = isToday ? (reduxDailySummary.data?.totals || dailyTotals) : dailyTotals;
+
+  const caloriesLeft = Math.max(0, goals.daily_calories - displayTotals.calories);
+  const proteinLeft = Math.max(0, goals.daily_protein - displayTotals.protein);
+  const carbsLeft = Math.max(0, goals.daily_carbs - displayTotals.carbs);
+  const fatsLeft = Math.max(0, goals.daily_fats - displayTotals.fats);
+  const fiberLeft = Math.max(0, goals.daily_fiber - displayTotals.fiber);
+  const sugarLeft = Math.max(0, goals.daily_sugar - displayTotals.sugar);
+  const sodiumLeft = Math.max(0, goals.daily_sodium - displayTotals.sodium);
 
   if (initialLoading) {
     return <DashboardSkeleton />;
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col safe-area-top safe-area-bottom">
-      <div 
+    <div className="bg-background min-h-screen safe-area-top safe-area-bottom ">
+      <div
         className="flex-1 px-6 py-6 pb-24 overflow-auto"
-        {...swipeHandlers}
+
       >
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
-            <span className="text-xl">🍎</span>
+            <StreakIcon onClick={() => setShowStreakSheet(true)} />
             <span className="font-bold text-lg">Calo</span>
             <SubscriptionBadge compact />
           </div>
           <div className="flex items-center gap-1">
-            <StreakIcon onClick={() => setShowStreakSheet(true)} />
             <NotificationBell onClick={() => setShowNotifications(true)} />
           </div>
         </div>
 
         {/* Week Navigation */}
-        <div className="flex items-center justify-between mb-4">
-          <button 
+        <div className="flex items-center justify-between mb-4"
+          {...swipeHandlers}>
+          <button
             onClick={() => navigateWeek('prev')}
             className="p-2 rounded-full bg-secondary"
           >
@@ -254,7 +249,7 @@ const Dashboard = () => {
           <span className="text-sm font-medium text-muted-foreground">
             {format(weekDates[0], 'MMM d')} - {format(weekDates[6], 'MMM d, yyyy')}
           </span>
-          <button 
+          <button
             onClick={() => navigateWeek('next')}
             className={`p-2 rounded-full bg-secondary ${weekOffset === 0 ? 'opacity-50' : ''}`}
             disabled={weekOffset === 0}
@@ -276,13 +271,12 @@ const Dashboard = () => {
                 disabled={isFuture}
               >
                 <span className="text-xs text-muted-foreground mb-1">{dayNames[i]}</span>
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
-                  isSelected 
-                    ? 'bg-primary text-primary-foreground' 
-                    : isToday 
-                      ? 'ring-2 ring-primary/50 text-foreground' 
-                      : 'text-foreground'
-                }`}>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${isSelected
+                  ? 'bg-primary text-primary-foreground'
+                  : isToday
+                    ? 'ring-2 ring-primary/50 text-foreground'
+                    : 'text-foreground'
+                  }`}>
                   {date.getDate()}
                 </div>
               </button>
@@ -290,9 +284,11 @@ const Dashboard = () => {
           })}
         </div>
 
+
+
         {/* Unified Swipeable Cards Carousel */}
-        <ActivityCarousel 
-          selectedDate={selectedDate} 
+        <ActivityCarousel
+          selectedDate={selectedDate}
           onDataChange={fetchDashboardData}
           nutritionData={{
             caloriesLeft,
@@ -302,7 +298,7 @@ const Dashboard = () => {
             fiberLeft,
             sugarLeft,
             sodiumLeft,
-            dailyTotals,
+            dailyTotals: displayTotals,
             goals
           }}
         />
@@ -311,49 +307,95 @@ const Dashboard = () => {
           <h3 className="font-semibold mb-4">
             {isSameDay(selectedDate, today) ? 'Recently logged' : format(selectedDate, 'EEEE, MMM d')}
           </h3>
-          {loading ? (
+          {loading && !displayFoods.length ? (
             <div className="bg-card rounded-2xl p-6 shadow-soft text-center">
               <p className="text-muted-foreground">Loading...</p>
             </div>
-          ) : recentFoods.length === 0 ? (
-            <div className="bg-card rounded-2xl p-6 shadow-soft text-center">
-              <p className="text-muted-foreground">No food logged for this day</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Start tracking meals by taking a quick picture.
-              </p>
+          ) : displayFoods.length === 0 ? (
+            <div className="bg-card rounded-2xl p-4 shadow-soft text-center">
+              <div className="flex flex-row items-center justify-center text-center gap-2">
+                <div className="text-4xl mb-2" aria-hidden>
+                  🍛
+                </div>
+                <div className="flex flex-col items-center justify-center text-center">
+
+                  <p className="font-semibold">
+                    No food logged
+                  </p>
+
+                  <p className="text-xs text-muted-foreground mt-1 max-w-xs">
+                    Snap a pic to track.
+                  </p>
+                </div>
+              </div>
+
             </div>
           ) : (
             <div className="space-y-3">
-              {recentFoods.slice(0, 5).map((food) => (
-                <button
-                  key={food.id}
-                  onClick={() => setSelectedFood(food)}
-                  className="w-full bg-card rounded-2xl p-4 shadow-soft flex items-center gap-4 text-left transition-transform active:scale-[0.98]"
-                >
-                  {food.image_url ? (
-                    <img 
-                      src={food.image_url} 
-                      alt={food.name} 
-                      className="w-14 h-14 rounded-xl object-cover"
-                    />
-                  ) : (
-                    <div className="w-14 h-14 rounded-xl bg-secondary flex items-center justify-center">
-                      <span className="text-2xl">🍽️</span>
+              {displayFoods.slice(0, 10).map((food) => {
+                const isTemp = food.id.startsWith('temp-');
+                return (
+                  <button
+                    key={food.id}
+                    onClick={() => setSelectedFood(food)}
+                    className="w-full bg-card rounded-2xl p-3 shadow-soft flex items-center gap-3 text-left transition-transform active:scale-[0.98]"
+                  >
+                    {/* Image Container with soft background */}
+                    <div className="relative w-16 h-16 rounded-2xl bg-[#f0f7f0] flex-shrink-0 flex items-center justify-center overflow-hidden" style={{ background: '#f0f7f0' }}>
+                      {food.image_url ? (
+                        <>
+                          <img
+                            src={food.image_url}
+                            alt={food.name}
+                            className={`w-full h-full object-cover rounded-xl ${isTemp ? 'blur-[2px] opacity-80' : ''}`}
+                          />
+                          {isTemp && (
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <div className="w-6 h-6 rounded-full border-3 border-white/30 border-t-white animate-spin" />
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-2xl">🍽️</span>
+                      )}
                     </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold truncate">{food.name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {food.calories} cal • {food.meal_type || 'Meal'}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs text-muted-foreground">
-                      {format(new Date(food.logged_at), 'h:mm a')}
-                    </p>
-                  </div>
-                </button>
-              ))}
+
+                    <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                      {/* Row 1: Name and Time */}
+                      <div className="flex justify-between items-baseline">
+                        <p className="font-bold text-[15px] truncate text-foreground">{food.name}</p>
+                        <p className="text-[11px] text-muted-foreground shrink-0 ml-2">
+                          {format(new Date(food.logged_at), 'h:mm a')}
+                        </p>
+                      </div>
+
+                      {/* Row 2: Calories */}
+                      <div className="flex items-center gap-1.5">
+                        <Flame className="w-3.5 h-3.5 text-[#22c55e] fill-[#22c55e]/10" />
+                        <p className="text-[13px] font-medium text-muted-foreground">
+                          {food.calories} calories
+                        </p>
+                      </div>
+
+                      {/* Row 3: Macros */}
+                      <div className="flex items-center gap-3 mt-0.5">
+                        <div className="flex items-center gap-1">
+                          <Beef className="w-3 h-3 text-red-500" />
+                          <span className="text-[11px] font-semibold text-muted-foreground">{food.protein || 0}g</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Wheat className="w-3 h-3 text-amber-500" />
+                          <span className="text-[11px] font-semibold text-muted-foreground">{food.carbs || 0}g</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Droplets className="w-3 h-3 text-blue-500" />
+                          <span className="text-[11px] font-semibold text-muted-foreground">{food.fats || 0}g</span>
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>
@@ -361,17 +403,17 @@ const Dashboard = () => {
 
       {/* Meal Detail Modal */}
       {selectedFood && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center"
           onClick={() => setSelectedFood(null)}
         >
-          <div 
+          <div
             className="bg-card rounded-t-3xl w-full max-w-lg p-6 animate-in slide-in-from-bottom duration-300"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold">Meal Details</h3>
-              <button 
+              <button
                 onClick={() => setSelectedFood(null)}
                 className="p-2 rounded-full bg-secondary"
               >
@@ -381,9 +423,9 @@ const Dashboard = () => {
 
             <div className="flex items-center gap-4 mb-6">
               {selectedFood.image_url ? (
-                <img 
-                  src={selectedFood.image_url} 
-                  alt={selectedFood.name} 
+                <img
+                  src={selectedFood.image_url}
+                  alt={selectedFood.name}
                   className="w-20 h-20 rounded-2xl object-cover"
                 />
               ) : (
@@ -416,11 +458,10 @@ const Dashboard = () => {
                 </div>
               </div>
               <div className="mt-2 h-2 bg-secondary rounded-full overflow-hidden">
-                <div 
-                  className={`h-full rounded-full transition-all ${
-                    calculateHealthScore(selectedFood, goals) >= 70 ? 'bg-green-500' :
+                <div
+                  className={`h-full rounded-full transition-all ${calculateHealthScore(selectedFood, goals) >= 70 ? 'bg-green-500' :
                     calculateHealthScore(selectedFood, goals) >= 50 ? 'bg-amber-500' : 'bg-red-500'
-                  }`}
+                    }`}
                   style={{ width: `${calculateHealthScore(selectedFood, goals)}%` }}
                 />
               </div>
@@ -460,9 +501,9 @@ const Dashboard = () => {
       )}
 
       {/* Notification Center */}
-      <NotificationCenter 
-        isOpen={showNotifications} 
-        onClose={() => setShowNotifications(false)} 
+      <NotificationCenter
+        isOpen={showNotifications}
+        onClose={() => setShowNotifications(false)}
       />
 
       {/* Streak Share Sheet */}
@@ -483,23 +524,60 @@ const Dashboard = () => {
         />
       )}
 
-      <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border safe-area-bottom">
-        <div className="flex justify-around py-3">
-          {[
-            { icon: Home, path: '/dashboard', label: 'Home' },
-            { icon: BarChart3, path: '/progress', label: 'Analytics' },
-            { icon: Scan, path: '/scanner', label: 'Scan' },
-            { icon: User, path: '/profile', label: 'Settings' },
-          ].map(({ icon: Icon, path, label }) => (
-            <Link key={path} to={path} className={`flex flex-col items-center gap-1 px-4 ${
-              location.pathname === path ? 'text-primary' : 'text-muted-foreground'
-            }`}>
-              <Icon className="w-6 h-6" />
-              <span className="text-xs">{label}</span>
-            </Link>
-          ))}
+      <nav className={`fixed bottom-0 left-0 right-0 bg-card border-t border-border safe-area-bottom
+  transition-transform duration-300 ease-out
+  ${isNavHidden ? 'translate-y-full' : 'translate-y-0'}`}>
+        <div className="relative flex items-center justify-around py-2 ">
+          {/* Home */}
+          <Link
+            to="/dashboard"
+            className={`flex flex-col items-center gap-0.5 px-4 ${location.pathname === '/dashboard'
+              ? 'text-primary'
+              : 'text-muted-foreground'
+              }`}
+          >
+            <svg className="w-6 h-6 mb-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+            <span className="text-[10px]">Home</span>
+          </Link>
+
+          {/* Analytics */}
+          <Link
+            to="/progress"
+            className={`flex flex-col items-center gap-0.5 px-4 ${location.pathname === '/progress'
+              ? 'text-primary'
+              : 'text-muted-foreground'
+              }`}
+          >
+            <svg className="w-6 h-6 mb-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+            <span className="text-[10px]">Analytics</span>
+          </Link>
+
+          {/* Settings (extra right spacing so it doesn't go under +) */}
+          <Link
+            to="/profile"
+            className={`flex flex-col items-center gap-0.5 px-4 pr-16 ${location.pathname === '/profile'
+              ? 'text-primary'
+              : 'text-muted-foreground'
+              }`}
+          >
+            <svg className="w-6 h-6 mb-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            <span className="text-[10px]">Settings</span>
+          </Link>
+
+          {/* FLOATING + BUTTON */}
+          <Link
+            to="/scanner"
+            className="absolute -top-6 right-4"
+          >
+            <div className="w-14 h-14 rounded-full bg-black flex items-center justify-center shadow-xl active:scale-95 transition-transform">
+              <Plus className="w-7 h-7 text-white" />
+            </div>
+          </Link>
         </div>
       </nav>
+
+
+
     </div>
   );
 };

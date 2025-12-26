@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Plus, Minus, X, Loader2 } from 'lucide-react';
+import { Search, Plus, Minus, X, Loader2, Flame, Wheat, Beef, Droplets, Apple, Candy, Salad } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { searchFoods, logFoodFromLibrary, FoodSearchResult } from '@/lib/api/food-search';
@@ -17,6 +17,7 @@ const FoodLibrary = ({ onClose }: FoodLibraryProps) => {
   const [results, setResults] = useState<FoodSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [selectedFood, setSelectedFood] = useState<FoodSearchResult | null>(null);
+  const [activePage, setActivePage] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [isLogging, setIsLogging] = useState(false);
 
@@ -147,7 +148,7 @@ const FoodLibrary = ({ onClose }: FoodLibraryProps) => {
       {/* Selected Food Modal */}
       {selectedFood && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-end">
-          <div className="w-full bg-card rounded-t-3xl p-6 pb-10 safe-area-bottom animate-in slide-in-from-bottom">
+          <div className="w-full bg-card rounded-t-3xl p-6 pb-20 safe-area-bottom animate-in slide-in-from-bottom">
             <div className="w-12 h-1 bg-muted rounded-full mx-auto mb-6" />
 
             <div className="flex items-start gap-4 mb-6">
@@ -174,23 +175,121 @@ const FoodLibrary = ({ onClose }: FoodLibraryProps) => {
               </button>
             </div>
 
-            {/* Nutrition per serving */}
-            <div className="grid grid-cols-4 gap-2 mb-6">
-              <div className="bg-muted rounded-xl p-3 text-center">
-                <p className="text-lg font-semibold">{Math.round(selectedFood.calories * quantity)}</p>
-                <p className="text-xs text-muted-foreground">Calories</p>
+            {/* Slidable Nutrition Grid */}
+            <div className="relative mb-6">
+              <div
+                className="flex overflow-x-auto snap-x snap-mandatory scrollbar-none gap-4 pb-2"
+                onScroll={(e) => {
+                  const scrollLeft = e.currentTarget.scrollLeft;
+                  const width = e.currentTarget.offsetWidth;
+                  const page = Math.round(scrollLeft / width);
+                  if (page !== activePage) setActivePage(page);
+                }}
+              >
+                {/* Page 1: Macros */}
+                <div className="w-full shrink-0 snap-center">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="flex items-center gap-3 p-3 bg-secondary/50 rounded-xl">
+                      <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center shrink-0">
+                        <Flame className="w-5 h-5 text-orange-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-muted-foreground">Calories</p>
+                        <p className="text-lg font-bold text-foreground">
+                          {Math.round(selectedFood.calories * quantity)}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 p-3 bg-secondary/50 rounded-xl">
+                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center shrink-0">
+                        <Droplets className="w-5 h-5 text-blue-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-muted-foreground">Fats</p>
+                        <p className="text-lg font-bold text-foreground">
+                          {Math.round((selectedFood.fats || 0) * quantity)}g
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 p-3 bg-secondary/50 rounded-xl">
+                      <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center shrink-0">
+                        <Beef className="w-5 h-5 text-red-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-muted-foreground">Protein</p>
+                        <p className="text-lg font-bold text-foreground">
+                          {Math.round((selectedFood.protein || 0) * quantity)}g
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 p-3 bg-secondary/50 rounded-xl">
+                      <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center shrink-0">
+                        <Wheat className="w-5 h-5 text-amber-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-muted-foreground">Carbs</p>
+                        <p className="text-lg font-bold text-foreground">
+                          {Math.round((selectedFood.carbs || 0) * quantity)}g
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Page 2: Micronutrients */}
+                <div className="w-full shrink-0 snap-center pl-1">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="flex items-center gap-3 p-3 bg-secondary/50 rounded-xl">
+                      <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center shrink-0">
+                        <Apple className="w-5 h-5 text-purple-500" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-muted-foreground">Fiber</p>
+                        <p className="text-lg font-bold text-foreground">
+                          {Math.round((selectedFood.fiber || 0) * quantity)}g
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 p-3 bg-secondary/50 rounded-xl">
+                      <div className="w-10 h-10 bg-pink-100 rounded-full flex items-center justify-center shrink-0">
+                        <Candy className="w-5 h-5 text-pink-500" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-muted-foreground">Sugar</p>
+                        <p className="text-lg font-bold text-foreground">
+                          {Math.round((selectedFood.sugar || 0) * quantity)}g
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 p-3 bg-secondary/50 rounded-xl">
+                      <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center shrink-0">
+                        <Salad className="w-5 h-5 text-emerald-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-muted-foreground">Sodium</p>
+                        <p className="text-lg font-bold text-foreground">
+                          {Math.round((selectedFood.sodium || 0) * quantity)}mg
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div className="bg-muted rounded-xl p-3 text-center">
-                <p className="text-lg font-semibold">{Math.round(selectedFood.protein * quantity)}g</p>
-                <p className="text-xs text-muted-foreground">Protein</p>
-              </div>
-              <div className="bg-muted rounded-xl p-3 text-center">
-                <p className="text-lg font-semibold">{Math.round(selectedFood.carbs * quantity)}g</p>
-                <p className="text-xs text-muted-foreground">Carbs</p>
-              </div>
-              <div className="bg-muted rounded-xl p-3 text-center">
-                <p className="text-lg font-semibold">{Math.round(selectedFood.fats * quantity)}g</p>
-                <p className="text-xs text-muted-foreground">Fats</p>
+
+              {/* Pagination Dots */}
+              <div className="flex justify-center gap-1.5 mt-2">
+                {[0, 1].map((page) => (
+                  <div
+                    key={page}
+                    className={`h-1.5 rounded-full transition-all duration-300 ${activePage === page ? 'w-4 bg-primary' : 'w-1.5 bg-muted'
+                      }`}
+                  />
+                ))}
               </div>
             </div>
 
@@ -217,7 +316,7 @@ const FoodLibrary = ({ onClose }: FoodLibraryProps) => {
             <Button
               onClick={handleLogFood}
               disabled={isLogging}
-              className="w-full h-14 text-lg rounded-xl"
+              className="w-full h-14 text-lg rounded-xl mb-10"
             >
               {isLogging ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
@@ -225,6 +324,16 @@ const FoodLibrary = ({ onClose }: FoodLibraryProps) => {
                 `Log ${Math.round(selectedFood.calories * quantity)} calories`
               )}
             </Button>
+
+            <style>{`
+              .scrollbar-none::-webkit-scrollbar {
+                display: none;
+              }
+              .scrollbar-none {
+                -ms-overflow-style: none;
+                scrollbar-width: none;
+              }
+            `}</style>
           </div>
         </div>
       )}

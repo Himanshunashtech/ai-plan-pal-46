@@ -8,6 +8,9 @@ export interface FoodSearchResult {
   protein: number;
   carbs: number;
   fats: number;
+  fiber?: number;
+  sugar?: number;
+  sodium?: number;
   servingSize: string;
   image?: string;
 }
@@ -37,6 +40,9 @@ export async function searchFoods(query: string): Promise<FoodSearchResult[]> {
         protein: Math.round((product.nutriments?.proteins_100g || 0) * 10) / 10,
         carbs: Math.round((product.nutriments?.carbohydrates_100g || 0) * 10) / 10,
         fats: Math.round((product.nutriments?.fat_100g || 0) * 10) / 10,
+        fiber: Math.round((product.nutriments?.fiber_100g || 0) * 10) / 10,
+        sugar: Math.round((product.nutriments?.sugars_100g || 0) * 10) / 10,
+        sodium: Math.round((product.nutriments?.sodium_100g || 0) * 1000), // Convert g to mg
         servingSize: product.serving_size || '100g',
         image: product.image_small_url || product.image_url
       }));

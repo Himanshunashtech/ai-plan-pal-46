@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useEffect, useCallback, useRef } from 'react';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { fetchEarnedBadges, earnBadge, clearNewlyUnlockedBadge } from '@/store/slices/gamificationSlice';
+import { Badge, BADGES } from '@/lib/badges';
 import { useAuth } from '@/contexts/AuthContext';
-import { Badge, BADGES, getBadgeById } from '@/lib/badges';
-import { sendBadgeNotification } from '@/lib/badge-triggers';
 
 export interface EarnedBadge extends Badge {
   earnedAt: string;
@@ -10,85 +10,38 @@ export interface EarnedBadge extends Badge {
 
 export function useBadges() {
   const { user } = useAuth();
-  const [earnedBadges, setEarnedBadges] = useState<EarnedBadge[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [newlyUnlockedBadge, setNewlyUnlockedBadge] = useState<Badge | null>(null);
+  const dispatch = useAppDispatch();
+  const { earnedBadges, loading, newlyUnlockedBadge } = useAppSelector(state => state.gamification);
 
-  const fetchEarnedBadges = useCallback(async () => {
-    if (!user) return;
+  const userId = user?.id;
+  const lastFetchedUserId = useRef<string | undefined>(undefined);
 
-    try {
-      const { data, error } = await supabase
-        .from('user_badges')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('earned_at', { ascending: false });
-
-      if (error) throw error;
-
-      const badges: EarnedBadge[] = (data || []).map(ub => {
-        const badge = getBadgeById(ub.badge_id);
-        if (!badge) return null;
-        return {
-          ...badge,
-          earnedAt: ub.earned_at,
-        };
-      }).filter(Boolean) as EarnedBadge[];
-
-      setEarnedBadges(badges);
-    } catch (error) {
-      console.error('Error fetching badges:', error);
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    // Only fetch if we have a user and haven't loaded badges yet (or if explicitly refetched via other means)
+    // We check earnedBadges.length to see if we already have data. 
+    // This simple check prevents re-fetching on every mount if data persists in Redux.
+    if (userId && userId !== lastFetchedUserId.current && earnedBadges.length === 0) {
+      lastFetchedUserId.current = userId;
+      dispatch(fetchEarnedBadges(userId));
+    } else if (userId && earnedBadges.length > 0) {
+      // If we already have badges, mark as fetched for this user so we don't fetch again if userId flickers
+      lastFetchedUserId.current = userId;
     }
-  }, [user]);
+  }, [userId, dispatch, earnedBadges.length]);
 
   const hasBadge = useCallback((badgeId: string): boolean => {
     return earnedBadges.some(b => b.id === badgeId);
   }, [earnedBadges]);
 
-  const earnBadge = useCallback(async (badgeId: string): Promise<boolean> => {
+  const handleEarnBadge = useCallback(async (badgeId: string): Promise<boolean> => {
     if (!user) return false;
-    if (hasBadge(badgeId)) return false;
+    const resultAction = await dispatch(earnBadge({ userId: user.id, badgeId }));
+    return earnBadge.fulfilled.match(resultAction) && !!resultAction.payload;
+  }, [user, dispatch]);
 
-    const badge = getBadgeById(badgeId);
-    if (!badge) return false;
-
-    try {
-      const { error } = await supabase
-        .from('user_badges')
-        .insert({
-          user_id: user.id,
-          badge_id: badgeId,
-        });
-
-      if (error) {
-        // Unique constraint violation means already earned
-        if (error.code === '23505') return false;
-        throw error;
-      }
-
-      const earnedBadge: EarnedBadge = {
-        ...badge,
-        earnedAt: new Date().toISOString(),
-      };
-
-      setEarnedBadges(prev => [earnedBadge, ...prev]);
-      setNewlyUnlockedBadge(badge);
-
-      // Send push notification for badge unlock
-      sendBadgeNotification(user.id, badge.name, badge.icon);
-
-      return true;
-    } catch (error) {
-      console.error('Error earning badge:', error);
-      return false;
-    }
-  }, [user, hasBadge]);
-
-  const clearNewlyUnlockedBadge = useCallback(() => {
-    setNewlyUnlockedBadge(null);
-  }, []);
+  const handleClearNewlyUnlocked = useCallback(() => {
+    dispatch(clearNewlyUnlockedBadge());
+  }, [dispatch]);
 
   const getAllBadgesWithStatus = useCallback((): (Badge & { unlocked: boolean; earnedAt?: string })[] => {
     return BADGES.map(badge => {
@@ -101,21 +54,15 @@ export function useBadges() {
     });
   }, [earnedBadges]);
 
-  useEffect(() => {
-    if (user) {
-      fetchEarnedBadges();
-    }
-  }, [user, fetchEarnedBadges]);
-
   return {
     earnedBadges,
     loading,
     hasBadge,
-    earnBadge,
+    earnBadge: handleEarnBadge,
     newlyUnlockedBadge,
-    clearNewlyUnlockedBadge,
+    clearNewlyUnlockedBadge: handleClearNewlyUnlocked,
     getAllBadgesWithStatus,
-    refetch: fetchEarnedBadges,
+    refetch: () => user && dispatch(fetchEarnedBadges(user.id)),
     badgeCount: earnedBadges.length,
     totalBadges: BADGES.length,
   };

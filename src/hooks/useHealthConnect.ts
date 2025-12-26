@@ -45,8 +45,8 @@ export const useHealthConnect = (): UseHealthConnectReturn => {
       }
 
       try {
-        const module = await import('capacitor-health-connect');
-        healthConnectRef.current = module.HealthConnect;
+        // const module = await import('capacitor-health-connect');
+        // healthConnectRef.current = module.HealthConnect;
         
         if (healthConnectRef.current) {
           const result = await healthConnectRef.current.checkAvailability();

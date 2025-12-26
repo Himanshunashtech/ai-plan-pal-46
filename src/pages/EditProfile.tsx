@@ -27,7 +27,7 @@ const EditProfile = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [profile, setProfile] = useState<ProfileData>({
@@ -41,11 +41,11 @@ const EditProfile = () => {
     weight_unit: 'kg',
     activity_level: null,
   });
-  
+
   const [imageToCrop, setImageToCrop] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [newAvatarBlob, setNewAvatarBlob] = useState<Blob | null>(null);
-  
+
   // Password change state
   const [showPasswordSection, setShowPasswordSection] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
@@ -59,13 +59,13 @@ const EditProfile = () => {
   useEffect(() => {
     const fetchProfile = async () => {
       if (!user) return;
-      
+
       const { data, error } = await supabase
         .from('profiles')
         .select('full_name, avatar_url, gender, age, height, height_unit, current_weight, weight_unit, activity_level')
         .eq('user_id', user.id)
-        .single();
-      
+        .maybeSingle();
+
       if (data) {
         setProfile(data);
         if (data.avatar_url) {
@@ -74,7 +74,7 @@ const EditProfile = () => {
       }
       setLoading(false);
     };
-    
+
     fetchProfile();
   }, [user]);
 
@@ -100,31 +100,31 @@ const EditProfile = () => {
       toast.error('Please fill in all password fields');
       return;
     }
-    
+
     if (newPassword !== confirmPassword) {
       toast.error('New passwords do not match');
       return;
     }
-    
+
     if (newPassword.length < 6) {
       toast.error('Password must be at least 6 characters');
       return;
     }
-    
+
     setChangingPassword(true);
     try {
       const { error } = await supabase.auth.updateUser({
         password: newPassword
       });
-      
+
       if (error) throw error;
-      
+
       toast.success('Password updated successfully');
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
       setShowPasswordSection(false);
-      
+
       // Send notification email about password change
       try {
         await supabase.functions.invoke('send-notification-email', {
@@ -146,31 +146,31 @@ const EditProfile = () => {
 
   const handleSave = async () => {
     if (!user) return;
-    
+
     setSaving(true);
     try {
       let avatarUrl = profile.avatar_url;
-      
+
       // Upload new avatar if changed
       if (newAvatarBlob) {
         const fileName = `${user.id}/${Date.now()}.jpg`;
-        
+
         const { error: uploadError } = await supabase.storage
           .from('avatars')
           .upload(fileName, newAvatarBlob, {
             contentType: 'image/jpeg',
             upsert: true
           });
-        
+
         if (uploadError) throw uploadError;
-        
+
         const { data: { publicUrl } } = supabase.storage
           .from('avatars')
           .getPublicUrl(fileName);
-        
+
         avatarUrl = publicUrl;
       }
-      
+
       // Update profile
       const { error } = await supabase
         .from('profiles')
@@ -186,9 +186,9 @@ const EditProfile = () => {
           activity_level: profile.activity_level,
         })
         .eq('user_id', user.id);
-      
+
       if (error) throw error;
-      
+
       // Send notification email about profile update
       try {
         await supabase.functions.invoke('send-notification-email', {
@@ -200,7 +200,7 @@ const EditProfile = () => {
       } catch (emailError) {
         console.log('Email notification not sent (API key may not be configured)');
       }
-      
+
       toast.success('Profile updated successfully');
       navigate('/profile');
     } catch (error) {
@@ -238,7 +238,7 @@ const EditProfile = () => {
 
         {/* Avatar Section */}
         <div className="flex flex-col items-center mb-8">
-          <div 
+          <div
             className="relative w-28 h-28 rounded-full bg-secondary flex items-center justify-center overflow-hidden cursor-pointer"
             onClick={() => fileInputRef.current?.click()}
           >
@@ -251,7 +251,7 @@ const EditProfile = () => {
               <Camera className="w-8 h-8 text-white" />
             </div>
           </div>
-          <button 
+          <button
             className="text-primary text-sm font-medium mt-3"
             onClick={() => fileInputRef.current?.click()}
           >
@@ -395,7 +395,7 @@ const EditProfile = () => {
               <Lock className="w-4 h-4" />
               {showPasswordSection ? 'Cancel Password Change' : 'Change Password'}
             </button>
-            
+
             {showPasswordSection && (
               <div className="mt-4 space-y-4 p-4 bg-secondary/50 rounded-lg">
                 <div>
@@ -417,7 +417,7 @@ const EditProfile = () => {
                     </button>
                   </div>
                 </div>
-                
+
                 <div>
                   <Label htmlFor="confirmPassword">Confirm New Password</Label>
                   <div className="relative mt-1.5">
@@ -437,7 +437,7 @@ const EditProfile = () => {
                     </button>
                   </div>
                 </div>
-                
+
                 <Button
                   type="button"
                   variant="secondary"

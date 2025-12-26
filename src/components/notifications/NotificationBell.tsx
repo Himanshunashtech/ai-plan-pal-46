@@ -15,12 +15,12 @@ export const NotificationBell = ({ onClick }: NotificationBellProps) => {
       className="flex items-center gap-2 bg-secondary rounded-full px-3 py-1.5 transition-colors hover:bg-secondary/80"
     >
       {/* Streak display */}
-      {streak && streak.current_streak > 0 && (
+      {/* {streak && streak.current_streak > 0 && (
         <div className="flex items-center gap-1">
           <Flame className="w-4 h-4 text-orange-500" />
           <span className="font-semibold text-sm">{streak.current_streak}</span>
         </div>
-      )}
+      )} */}
 
       {/* Bell with badge */}
       <div className="relative">

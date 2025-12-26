@@ -79,7 +79,7 @@ export async function enqueueAnalysis(imageBase64: string): Promise<EnqueueResul
 // Poll for job status
 export async function getJobStatus(jobId: string): Promise<JobStatus> {
   const response = await fetch(
-    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-job-status?jobId=${jobId}`,
+    `${import.meta.env.VITE_SUPABASE_URL || "https://ijotcekseqoasueihvsh.supabase.co"}/functions/v1/get-job-status?jobId=${jobId}`,
     {
       headers: {
         'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
@@ -98,29 +98,29 @@ export async function getJobStatus(jobId: string): Promise<JobStatus> {
 
 // Poll until job completes
 export async function waitForAnalysis(
-  jobId: string, 
+  jobId: string,
   onProgress?: (status: string) => void,
   maxWaitMs: number = 60000,
   pollIntervalMs: number = 1000
 ): Promise<FoodAnalysisResult> {
   const startTime = Date.now();
-  
+
   while (Date.now() - startTime < maxWaitMs) {
     const status = await getJobStatus(jobId);
-    
+
     if (status.status === 'completed' && status.result) {
       return status.result;
     }
-    
+
     if (status.status === 'failed') {
       throw new Error(status.error || 'Analysis failed');
     }
-    
+
     onProgress?.(status.status === 'processing' ? 'Analyzing food...' : 'Queued...');
-    
+
     await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
   }
-  
+
   throw new Error('Analysis timed out');
 }
 
@@ -141,13 +141,49 @@ export async function analyzeFood(imageBase64: string): Promise<FoodAnalysisResu
   return data.data;
 }
 
+// Utility for exponential backoff retry
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  maxRetries: number = 3,
+  delayMs: number = 1000
+): Promise<T> {
+  let lastError: any;
+
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await fn();
+    } catch (error: any) {
+      lastError = error;
+
+      // Don't retry if it's a permanent error (like 400 Bad Request)
+      // But DO retry 429s (Rate Limit) and 5xx (Server Errors)
+      const isRateLimit = error.limitReached || error.message?.includes('429') || error.status === 429;
+      const isServerErr = error.message?.includes('500') || error.message?.includes('503') || error.status >= 500;
+
+      if (!isRateLimit && !isServerErr) {
+        throw error;
+      }
+
+      // Wait with exponential backoff
+      await new Promise(resolve => setTimeout(resolve, delayMs * Math.pow(2, i)));
+    }
+  }
+
+  throw lastError;
+}
+
 // Async analysis using job queue
 export async function analyzeFoodAsync(
   imageBase64: string,
   onProgress?: (status: string) => void
 ): Promise<FoodAnalysisResult> {
   onProgress?.('Queuing analysis...');
-  const { jobId } = await enqueueAnalysis(imageBase64);
+
+  // Wrap enqueue in retry logic
+  const { jobId } = await withRetry(() => enqueueAnalysis(imageBase64), 3, 2000);
+
+  // Wait for result (polling internal logic already handles some waiting, but wrap top level if needed)
+  // Logic here assumes polling is safe, but we can wrap individual poll checks if network flakes
   return waitForAnalysis(jobId, onProgress);
 }
 
@@ -201,14 +237,18 @@ export async function saveFoodEntry(
 }
 
 export async function uploadFoodImage(userId: string, imageBase64: string): Promise<string> {
+  // Detect mime type
+  const mimeType = imageBase64.match(/^data:(image\/\w+);base64,/)?.[1] || 'image/jpeg';
+  const extension = mimeType.split('/')[1] === 'webp' ? 'webp' : 'jpg';
+
   const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '');
   const buffer = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
-  const fileName = `${userId}/${Date.now()}.jpg`;
+  const fileName = `${userId}/${Date.now()}.${extension}`;
 
   const { error: uploadError } = await supabase.storage
     .from('food-images')
     .upload(fileName, buffer, {
-      contentType: 'image/jpeg',
+      contentType: mimeType,
       upsert: false
     });
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Sheet, SheetContent } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -65,6 +65,12 @@ const EditGoalSheet = ({ open, onOpenChange, type, value, onSave }: EditGoalShee
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="h-full rounded-t-none p-0">
+        <SheetHeader className="sr-only">
+          <SheetTitle>Edit {config.label} Goal</SheetTitle>
+          <SheetDescription>
+            Adjust your daily goal for {config.label}.
+          </SheetDescription>
+        </SheetHeader>
         <div className="min-h-screen bg-background flex flex-col safe-area-top safe-area-bottom">
           <div className="px-6 py-4">
             <button
