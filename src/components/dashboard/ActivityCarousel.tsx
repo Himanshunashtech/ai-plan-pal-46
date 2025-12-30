@@ -107,7 +107,7 @@ const ActivityCarousel = ({ selectedDate, onDataChange, onWaterClick, nutritionD
         .select('burned_calories_enabled, rollover_calories_enabled')
         .eq('user_id', user.id)
         .maybeSingle();
-      
+
       if (data) {
         setBurnedCaloriesEnabled(data.burned_calories_enabled ?? true);
         setRolloverCaloriesEnabled(data.rollover_calories_enabled ?? true);
@@ -159,7 +159,7 @@ const ActivityCarousel = ({ selectedDate, onDataChange, onWaterClick, nutritionD
         .eq('user_id', user.id)
         .eq('log_date', tomorrowStr)
         .maybeSingle();
-      
+
       setAlreadyRolledOver(!!(tomorrowData as any)?.rollover_calories && (tomorrowData as any).rollover_calories > 0);
     } catch (error) {
       console.error('Error fetching daily log:', error);
@@ -243,7 +243,7 @@ const ActivityCarousel = ({ selectedDate, onDataChange, onWaterClick, nutritionD
 
     try {
       const tomorrowStr = addDays(selectedDate, 1).toISOString().split('T')[0];
-      
+
       // Check if tomorrow's log exists
       const { data: existing } = await supabase
         .from('daily_nutrition_logs')
@@ -255,7 +255,7 @@ const ActivityCarousel = ({ selectedDate, onDataChange, onWaterClick, nutritionD
       if (existing?.id) {
         await supabase
           .from('daily_nutrition_logs')
-          .update({ 
+          .update({
             rollover_calories: remainingCalories,
             updated_at: new Date().toISOString()
           })
@@ -387,7 +387,7 @@ const ActivityCarousel = ({ selectedDate, onDataChange, onWaterClick, nutritionD
                 <Flame className="absolute w-7 h-7 text-foreground" />
               </div>
             </div>
-            
+
             {/* Rollover button - only show if calories left is 200 or less and it's today and feature is enabled */}
             {rolloverCaloriesEnabled && isSameDay(selectedDate, new Date()) && caloriesLeft > 0 && caloriesLeft <= 200 && (
               <button
@@ -576,13 +576,14 @@ const ActivityCarousel = ({ selectedDate, onDataChange, onWaterClick, nutritionD
             </div>
 
             {/* Calories Burned - Clickable or Locked */}
-            <div className="relative">
+            <div className="relative ">
               <button
                 onClick={() => burnedCaloriesEnabled && setShowBurnedSheet(true)}
                 disabled={!burnedCaloriesEnabled}
-                className={`w-full bg-card rounded-xl p-3 shadow-soft flex flex-col justify-between text-left transition-transform ${
-                  burnedCaloriesEnabled ? 'active:scale-[0.98]' : 'cursor-not-allowed'
-                }`}
+                className={`w-full min-h-[160px] bg-card rounded-xl p-3 shadow-soft 
+    flex flex-col justify-between text-left transition-transform 
+    ${burnedCaloriesEnabled ? 'active:scale-[0.98]' : 'cursor-not-allowed'}
+  `}
               >
                 <div className={burnedCaloriesEnabled ? '' : 'blur-sm'}>
                   <div className="flex items-center gap-2">
