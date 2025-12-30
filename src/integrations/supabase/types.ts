@@ -281,6 +281,7 @@ export type Database = {
           age: number | null
           allergies: string[] | null
           avatar_url: string | null
+          burned_calories_enabled: boolean | null
           cooking_time: string | null
           created_at: string
           current_weight: number | null
@@ -310,6 +311,7 @@ export type Database = {
           motivation: string[] | null
           onboarding_completed: boolean | null
           previous_diets: boolean | null
+          rollover_calories_enabled: boolean | null
           scheduled_deletion_at: string | null
           sleep_hours: number | null
           snacking: string | null
@@ -329,6 +331,7 @@ export type Database = {
           age?: number | null
           allergies?: string[] | null
           avatar_url?: string | null
+          burned_calories_enabled?: boolean | null
           cooking_time?: string | null
           created_at?: string
           current_weight?: number | null
@@ -358,6 +361,7 @@ export type Database = {
           motivation?: string[] | null
           onboarding_completed?: boolean | null
           previous_diets?: boolean | null
+          rollover_calories_enabled?: boolean | null
           scheduled_deletion_at?: string | null
           sleep_hours?: number | null
           snacking?: string | null
@@ -377,6 +381,7 @@ export type Database = {
           age?: number | null
           allergies?: string[] | null
           avatar_url?: string | null
+          burned_calories_enabled?: boolean | null
           cooking_time?: string | null
           created_at?: string
           current_weight?: number | null
@@ -406,6 +411,7 @@ export type Database = {
           motivation?: string[] | null
           onboarding_completed?: boolean | null
           previous_diets?: boolean | null
+          rollover_calories_enabled?: boolean | null
           scheduled_deletion_at?: string | null
           sleep_hours?: number | null
           snacking?: string | null

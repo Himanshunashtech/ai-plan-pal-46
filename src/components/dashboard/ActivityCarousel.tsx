@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Footprints, Flame, Plus, Minus, Settings, Beef, Wheat, Droplet, Leaf, Candy, HeartPulse, Zap } from 'lucide-react';
+import { Footprints, Flame, Plus, Minus, Settings, Beef, Wheat, Droplet, Leaf, Candy, HeartPulse, Zap, Lock } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { addDays, isSameDay } from 'date-fns';
@@ -81,6 +81,8 @@ const ActivityCarousel = ({ selectedDate, onDataChange, onWaterClick, nutritionD
   const [showBurnedSheet, setShowBurnedSheet] = useState(false);
   const [showRolloverSheet, setShowRolloverSheet] = useState(false);
   const [alreadyRolledOver, setAlreadyRolledOver] = useState(false);
+  const [burnedCaloriesEnabled, setBurnedCaloriesEnabled] = useState(true);
+  const [rolloverCaloriesEnabled, setRolloverCaloriesEnabled] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const stepsGoal = 10000;
@@ -91,10 +93,29 @@ const ActivityCarousel = ({ selectedDate, onDataChange, onWaterClick, nutritionD
   useEffect(() => {
     if (user) {
       fetchDailyLog();
+      fetchProfileSettings();
       // Check if user has logged water before for badge
       hasLoggedWaterBefore(user.id).then(setHasLoggedWater);
     }
   }, [user, selectedDate]);
+
+  const fetchProfileSettings = async () => {
+    if (!user) return;
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select('burned_calories_enabled, rollover_calories_enabled')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      if (data) {
+        setBurnedCaloriesEnabled(data.burned_calories_enabled ?? true);
+        setRolloverCaloriesEnabled(data.rollover_calories_enabled ?? true);
+      }
+    } catch (error) {
+      console.error('Error fetching profile settings:', error);
+    }
+  };
 
 
   const fetchDailyLog = async () => {
@@ -367,8 +388,8 @@ const ActivityCarousel = ({ selectedDate, onDataChange, onWaterClick, nutritionD
               </div>
             </div>
             
-            {/* Rollover button - only show if calories left is 200 or less and it's today */}
-            {isSameDay(selectedDate, new Date()) && caloriesLeft > 0 && caloriesLeft <= 200 && (
+            {/* Rollover button - only show if calories left is 200 or less and it's today and feature is enabled */}
+            {rolloverCaloriesEnabled && isSameDay(selectedDate, new Date()) && caloriesLeft > 0 && caloriesLeft <= 200 && (
               <button
                 onClick={() => setShowRolloverSheet(true)}
                 className="mt-4 w-full flex items-center justify-center gap-2 py-2 px-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl text-emerald-600 dark:text-emerald-400 text-sm font-medium active:scale-[0.98] transition-transform"
@@ -554,35 +575,49 @@ const ActivityCarousel = ({ selectedDate, onDataChange, onWaterClick, nutritionD
               />
             </div>
 
-            {/* Calories Burned - Clickable */}
-            <button
-              onClick={() => setShowBurnedSheet(true)}
-              className="bg-card rounded-xl p-3 shadow-soft flex flex-col justify-between text-left active:scale-[0.98] transition-transform"
-            >
-              <div>
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center">
-                    <Flame className="w-3.5 h-3.5 text-orange-500" />
+            {/* Calories Burned - Clickable or Locked */}
+            <div className="relative">
+              <button
+                onClick={() => burnedCaloriesEnabled && setShowBurnedSheet(true)}
+                disabled={!burnedCaloriesEnabled}
+                className={`w-full bg-card rounded-xl p-3 shadow-soft flex flex-col justify-between text-left transition-transform ${
+                  burnedCaloriesEnabled ? 'active:scale-[0.98]' : 'cursor-not-allowed'
+                }`}
+              >
+                <div className={burnedCaloriesEnabled ? '' : 'blur-sm'}>
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center">
+                      <Flame className="w-3.5 h-3.5 text-orange-500" />
+                    </div>
+                    <span className="text-2xl font-bold">
+                      {dailyLog.calories_burned}
+                    </span>
                   </div>
-                  <span className="text-2xl font-bold">
-                    {dailyLog.calories_burned}
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {t('calories_burned')}
-                </p>
-              </div>
-
-              <div className="flex items-center justify-between mt-3">
-                <div className="flex items-center gap-2">
-                  <Footprints className="w-4 h-4 text-muted-foreground" />
-                  <p className="text-xs text-muted-foreground">
-                    +{dailyLog.steps} {t('steps')}
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {t('calories_burned')}
                   </p>
                 </div>
-                <Plus className="w-4 h-4 text-muted-foreground" />
-              </div>
-            </button>
+
+                <div className={`flex items-center justify-between mt-3 ${burnedCaloriesEnabled ? '' : 'blur-sm'}`}>
+                  <div className="flex items-center gap-2">
+                    <Footprints className="w-4 h-4 text-muted-foreground" />
+                    <p className="text-xs text-muted-foreground">
+                      +{dailyLog.steps} {t('steps')}
+                    </p>
+                  </div>
+                  <Plus className="w-4 h-4 text-muted-foreground" />
+                </div>
+              </button>
+
+              {/* Lock overlay */}
+              {!burnedCaloriesEnabled && (
+                <div className="absolute inset-0 flex items-center justify-center bg-background/30 rounded-xl">
+                  <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center">
+                    <Lock className="w-5 h-5 text-muted-foreground" />
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
 
