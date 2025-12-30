@@ -1,6 +1,9 @@
 import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { RootState } from '../index';
+import { fetchDailySummary, fetchWeeklyStats } from './statsSlice';
+import { fetchEarnedBadges, fetchUserStreak } from './gamificationSlice';
 
 interface AuthState {
     user: User | null;
@@ -31,9 +34,25 @@ export const initializeAuth = createAsyncThunk(
     }
 );
 
-export const signOut = createAsyncThunk('auth/signOut', async () => {
+export const preloadUserData = createAsyncThunk(
+    'auth/preloadData',
+    async (_, { getState, dispatch }) => {
+        const state = getState() as RootState;
+        const userId = state.auth.user?.id;
+        if (!userId) return;
+
+        // Preload core data
+        await Promise.allSettled([
+            dispatch(fetchDailySummary(true)),
+            dispatch(fetchWeeklyStats(true)),
+            dispatch(fetchEarnedBadges({ userId, forceRefresh: true })),
+            dispatch(fetchUserStreak(userId)),
+        ]);
+    }
+);
+
+export const signOut = createAsyncThunk('auth/signOut', async (_, { getState }) => {
     await supabase.auth.signOut();
-    localStorage.removeItem('onboarding_progress');
 });
 
 const authSlice = createSlice({

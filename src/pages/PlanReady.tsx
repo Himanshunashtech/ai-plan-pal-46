@@ -1,10 +1,11 @@
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '@/store';
-import { updateGeneratedPlan } from '@/store/slices/onboardingSlice';
+import { updateGeneratedPlan, setGeneratedPlan } from '@/store/slices/onboardingSlice';
+import { calculatePlan } from '@/lib/nutrition-calculator';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, Pencil } from 'lucide-react';
 import NutritionRing from '@/components/ui/NutritionRing';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import AuthBottomSheet from '@/components/auth/AuthBottomSheet';
 import EditGoalSheet from '@/components/onboarding/EditGoalSheet';
 import { Flame, Wheat, Beef, Droplet } from 'lucide-react'
@@ -25,13 +26,23 @@ const PlanReady = () => {
   const [editingGoal, setEditingGoal] = useState<GoalType | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const plan = generatedPlan || {
-    dailyCalories: 1828,
-    dailyCarbs: 208,
-    dailyProtein: 134,
-    dailyFats: 50,
-    targetWeight: data.targetWeight || 62,
-  };
+  // Effect: Recalculate plan if missing (e.g. reload) but data exists
+  useEffect(() => {
+    if (!generatedPlan && Object.keys(data).length > 0) {
+      console.log('Recalculating plan from onboarding data...');
+      const newPlan = calculatePlan(data);
+      dispatch(setGeneratedPlan(newPlan));
+    }
+  }, [generatedPlan, data, dispatch]);
+
+  const plan = generatedPlan || (Object.keys(data).length > 0 ? calculatePlan(data) : {
+    dailyCalories: 2000,
+    dailyCarbs: 250,
+    dailyProtein: 150,
+    dailyFats: 60,
+    targetWeight: data.targetWeight || 70,
+    recommendation: 'Standard balanced plan'
+  });
 
   const handleContinue = async () => {
     // If user is already logged in, save the plan immediately to the database

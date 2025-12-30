@@ -37,6 +37,7 @@ export interface GeneratedPlan {
     dailyCarbs: number;
     dailyProtein: number;
     dailyFats: number;
+    dailyWater?: number;
     targetWeight: number;
     recommendation: string;
 }
@@ -76,7 +77,7 @@ const inchesToCm = (inches: number) => Math.round(inches * 2.54);
 const stored = loadFromStorage();
 const initialState: OnboardingState = {
     step: stored.step,
-    totalSteps: 15,
+    totalSteps: 14,
     data: stored.data,
     generatedPlan: null,
 };

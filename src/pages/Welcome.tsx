@@ -31,6 +31,7 @@ const Welcome = () => {
             loop
             muted
             playsInline
+            preload="auto"
           />
         </div>
 

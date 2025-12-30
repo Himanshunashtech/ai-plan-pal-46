@@ -16,12 +16,15 @@ import { format, startOfDay, endOfDay, subDays, addDays, isSameDay } from 'date-
 import { useSwipe } from '@/hooks/useSwipe';
 import { DashboardSkeleton } from '@/components/skeletons';
 import SubscriptionBadge from '@/components/subscription/SubscriptionBadge';
-import { useHideOnScroll } from '@/hooks/useHideOnScroll';
+import WaterIntakeSheet from '@/components/dashboard/WaterIntakeSheet';
+import { toast as sonnerToast } from 'sonner';
+import { useTranslation } from 'react-i18next';
+
 
 
 
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { setDailyLog, FoodEntry, fetchDailySummary } from '@/store/slices/statsSlice';
+import { setDailyLog, FoodEntry, fetchDailySummary, selectAllFoods } from '@/store/slices/statsSlice';
 
 // interface FoodEntry removed (imported from statsSlice)
 
@@ -43,6 +46,7 @@ interface UserGoals {
   daily_fiber: number;
   daily_sugar: number;
   daily_sodium: number;
+  water_intake: number;
 }
 
 const calculateHealthScore = (food: FoodEntry, goals: UserGoals): number => {
@@ -81,10 +85,10 @@ const getHealthScoreColor = (score: number): string => {
   return 'text-red-500';
 };
 
-const getHealthScoreLabel = (score: number): string => {
-  if (score >= 70) return 'Excellent';
-  if (score >= 50) return 'Good';
-  return 'Fair';
+const getHealthScoreLabel = (score: number, t: any): string => {
+  if (score >= 70) return t('excellent');
+  if (score >= 50) return t('good');
+  return t('fair');
 };
 
 const Dashboard = () => {
@@ -93,7 +97,8 @@ const Dashboard = () => {
   const { user } = useAuth();
   const dispatch = useAppDispatch();
   const { newlyUnlockedBadge, clearNewlyUnlockedBadge } = useBadges();
-  const isNavHidden = useHideOnScroll();
+  const { t } = useTranslation();
+
 
 
   // Use cached stats for goals (fast initial load)
@@ -107,12 +112,14 @@ const Dashboard = () => {
   });
   const [goals, setGoals] = useState<UserGoals>({
     daily_calories: 2000, daily_protein: 150, daily_carbs: 200, daily_fats: 60,
-    daily_fiber: 25, daily_sugar: 50, daily_sodium: 2300
+    daily_fiber: 25, daily_sugar: 50, daily_sodium: 2300, water_intake: 2000
   });
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [weekOffset, setWeekOffset] = useState(0);
   const [selectedFood, setSelectedFood] = useState<FoodEntry | null>(null);
+  const [showWaterSheet, setShowWaterSheet] = useState(false);
+  const [waterIntake, setWaterIntake] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showStreakSheet, setShowStreakSheet] = useState(false);
   const today = new Date();
@@ -145,52 +152,109 @@ const Dashboard = () => {
         daily_fats: cachedSummary.goals.daily_fats || 60,
         daily_fiber: cachedSummary.goals.daily_fiber || 25,
         daily_sugar: cachedSummary.goals.daily_sugar || 50,
-        daily_sodium: cachedSummary.goals.daily_sodium || 2300
+        daily_sodium: cachedSummary.goals.daily_sodium || 2300,
+        water_intake: (cachedSummary.goals as any).water_intake || 2000
       });
     }
   }, [cachedSummary, isCached]);
 
   useEffect(() => {
-    if (user) {
+    if (user?.id) {
       fetchDashboardData().then(() => {
         if (initialLoading) setInitialLoading(false);
       });
     }
-  }, [user, selectedDate]);
+  }, [user?.id, selectedDate]);
 
   const fetchDashboardData = async () => {
     if (!user) return;
 
     // Only show loading indicator if we don't have cached data and it's the first load
-    // OR if explicitly refreshing.
-    if (!isCached && recentFoods.length === 0) setLoading(true);
+    // OR if we are switching days and don't have data for that day (though we rely on recentFoods currently)
+    // To match previous optimized behavior:
+    if (recentFoods.length === 0 && !isCached) setLoading(true);
 
     try {
-      // Use the Redux thunk which calls the cached-stats Supabase function
-      const result = await dispatch(fetchDailySummary(true)).unwrap(); // Force refresh to get latest, but use cache logic in thunk if needed
+      const dayStart = startOfDay(selectedDate).toISOString();
+      const dayEnd = endOfDay(selectedDate).toISOString();
 
-      // The thunk already updates Redux state.
-      // We also update local state to keep the component working as is 
-      // (though ideally we should rely solely on Redux selectors).
+      const { data: foods, error: foodsError } = await supabase
+        .from('food_entries')
+        .select('*')
+        .eq('user_id', user.id)
+        .gte('logged_at', dayStart)
+        .lte('logged_at', dayEnd)
+        .order('logged_at', { ascending: false });
 
-      if (result.data) {
-        if (result.data.entries) {
-          setRecentFoods(result.data.entries);
-        }
-        if (result.data.totals) {
-          setDailyTotals(result.data.totals);
-        }
-        if (result.data.goals) {
-          setGoals({
-            daily_calories: result.data.goals.daily_calories || 2000,
-            daily_protein: result.data.goals.daily_protein || 150,
-            daily_carbs: result.data.goals.daily_carbs || 200,
-            daily_fats: result.data.goals.daily_fats || 60,
-            daily_fiber: result.data.goals.daily_fiber || 25,
-            daily_sugar: result.data.goals.daily_sugar || 50,
-            daily_sodium: result.data.goals.daily_sodium || 2300
-          });
-        }
+      if (foodsError) throw foodsError;
+
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('daily_calories, daily_protein, daily_carbs, daily_fats, daily_fiber, daily_sugar, daily_sodium, water_intake')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (profileError) throw profileError;
+
+      const dateStr = selectedDate.toISOString().split('T')[0];
+      const { data: waterData } = await supabase
+        .from('daily_nutrition_logs')
+        .select('water_intake')
+        .eq('user_id', user.id)
+        .eq('log_date', dateStr)
+        .maybeSingle();
+
+      if (waterData) {
+        setWaterIntake(waterData.water_intake || 0);
+      } else {
+        setWaterIntake(0);
+      }
+
+      let totals = { calories: 0, protein: 0, carbs: 0, fats: 0, fiber: 0, sugar: 0, sodium: 0 };
+
+      if (foods) {
+        setRecentFoods(foods);
+        totals = foods.reduce((acc, food) => ({
+          calories: acc.calories + (food.calories || 0),
+          protein: acc.protein + (food.protein || 0),
+          carbs: acc.carbs + (food.carbs || 0),
+          fats: acc.fats + (food.fats || 0),
+          fiber: acc.fiber + ((food as any).fiber || 0),
+          sugar: acc.sugar + ((food as any).sugar || 0),
+          sodium: acc.sodium + ((food as any).sodium || 0)
+        }), { calories: 0, protein: 0, carbs: 0, fats: 0, fiber: 0, sugar: 0, sodium: 0 });
+        setDailyTotals(totals);
+      }
+
+      if (profile) {
+        setGoals({
+          daily_calories: profile.daily_calories || 2000,
+          daily_protein: profile.daily_protein || 150,
+          daily_carbs: profile.daily_carbs || 200,
+          daily_fats: profile.daily_fats || 60,
+          daily_fiber: (profile as any).daily_fiber || 25,
+          daily_sugar: (profile as any).daily_sugar || 50,
+          daily_sodium: (profile as any).daily_sodium || 2300,
+          water_intake: (profile as any).water_intake || 2000
+        });
+      }
+
+      // Sync with Redux if it's today (for optimistic updates)
+      if (isSameDay(selectedDate, new Date())) {
+        dispatch(setDailyLog({
+          foods: foods || [],
+          totals,
+          goals: profile ? {
+            daily_calories: profile.daily_calories,
+            daily_protein: profile.daily_protein,
+            daily_carbs: profile.daily_carbs,
+            daily_fats: profile.daily_fats,
+            daily_fiber: (profile as any).daily_fiber,
+            daily_sugar: (profile as any).daily_sugar,
+            daily_sodium: (profile as any).daily_sodium,
+            water_intake: (profile as any).water_intake
+          } : undefined
+        }));
       }
 
     } catch (error) {
@@ -201,11 +265,36 @@ const Dashboard = () => {
     }
   };
 
+  const handleUpdateWater = async (amount: number) => {
+    if (!user) return;
+
+    try {
+      // User Request: Update raw profile water_intake (Goal/Target) instead of daily log
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          water_intake: amount,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      setWaterIntake(amount);
+      sonnerToast.success(t('water_update_success', { amount }));
+      fetchDashboardData(); // Refresh to sync everything
+    } catch (err) {
+      console.error('Error updating water:', err);
+      sonnerToast.error(t('water_update_failed'));
+    }
+  };
+
   const reduxDailySummary = useAppSelector(state => state.stats.dailySummary);
+  const reduxFoods = useAppSelector(selectAllFoods);
   const isToday = isSameDay(selectedDate, new Date());
 
   // Prefer Redux state for "Today" to show optimistic updates
-  const displayFoods = isToday ? (reduxDailySummary.data?.entries || recentFoods) : recentFoods;
+  const displayFoods = isToday ? (reduxFoods.length > 0 ? reduxFoods : recentFoods) : recentFoods;
   const displayTotals = isToday ? (reduxDailySummary.data?.totals || dailyTotals) : dailyTotals;
 
   const caloriesLeft = Math.max(0, goals.daily_calories - displayTotals.calories);
@@ -290,6 +379,7 @@ const Dashboard = () => {
         <ActivityCarousel
           selectedDate={selectedDate}
           onDataChange={fetchDashboardData}
+          onWaterClick={() => setShowWaterSheet(true)}
           nutritionData={{
             caloriesLeft,
             proteinLeft,
@@ -305,11 +395,11 @@ const Dashboard = () => {
 
         <div>
           <h3 className="font-semibold mb-4">
-            {isSameDay(selectedDate, today) ? 'Recently logged' : format(selectedDate, 'EEEE, MMM d')}
+            {isSameDay(selectedDate, today) ? t('recently_logged') : format(selectedDate, 'EEEE, MMM d')}
           </h3>
           {loading && !displayFoods.length ? (
             <div className="bg-card rounded-2xl p-6 shadow-soft text-center">
-              <p className="text-muted-foreground">Loading...</p>
+              <p className="text-muted-foreground">{t('loading')}</p>
             </div>
           ) : displayFoods.length === 0 ? (
             <div className="bg-card rounded-2xl p-4 shadow-soft text-center">
@@ -320,11 +410,11 @@ const Dashboard = () => {
                 <div className="flex flex-col items-center justify-center text-center">
 
                   <p className="font-semibold">
-                    No food logged
+                    {t('no_food')}
                   </p>
 
                   <p className="text-xs text-muted-foreground mt-1 max-w-xs">
-                    Snap a pic to track.
+                    {t('snap_pic')}
                   </p>
                 </div>
               </div>
@@ -373,7 +463,7 @@ const Dashboard = () => {
                       <div className="flex items-center gap-1.5">
                         <Flame className="w-3.5 h-3.5 text-[#22c55e] fill-[#22c55e]/10" />
                         <p className="text-[13px] font-medium text-muted-foreground">
-                          {food.calories} calories
+                          {food.calories} {t('calories').toLowerCase()}
                         </p>
                       </div>
 
@@ -404,7 +494,7 @@ const Dashboard = () => {
       {/* Meal Detail Modal */}
       {selectedFood && (
         <div
-          className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center"
+          className="fixed inset-0 bg-black/50 z-[60] flex items-end justify-center"
           onClick={() => setSelectedFood(null)}
         >
           <div
@@ -412,7 +502,7 @@ const Dashboard = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold">Meal Details</h3>
+              <h3 className="text-lg font-bold">{t('meal_details')}</h3>
               <button
                 onClick={() => setSelectedFood(null)}
                 className="p-2 rounded-full bg-secondary"
@@ -446,14 +536,14 @@ const Dashboard = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Heart className="w-5 h-5 text-red-500" />
-                  <span className="font-medium">Health Score</span>
+                  <span className="font-medium">{t('health_score')}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className={`text-2xl font-bold ${getHealthScoreColor(calculateHealthScore(selectedFood, goals))}`}>
                     {calculateHealthScore(selectedFood, goals)}
                   </span>
                   <span className={`text-sm ${getHealthScoreColor(calculateHealthScore(selectedFood, goals))}`}>
-                    {getHealthScoreLabel(calculateHealthScore(selectedFood, goals))}
+                    {getHealthScoreLabel(calculateHealthScore(selectedFood, goals), t)}
                   </span>
                 </div>
               </div>
@@ -472,7 +562,7 @@ const Dashboard = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Flame className="w-5 h-5 text-orange-500" />
-                  <span className="font-medium">Calories</span>
+                  <span className="font-medium">{t('calories')}</span>
                 </div>
                 <span className="text-xl font-bold">{selectedFood.calories}</span>
               </div>
@@ -483,17 +573,17 @@ const Dashboard = () => {
               <div className="bg-secondary/50 rounded-2xl p-4 text-center">
                 <Beef className="w-5 h-5 text-red-500 mx-auto mb-1" />
                 <p className="text-lg font-bold">{selectedFood.protein || 0}g</p>
-                <p className="text-xs text-muted-foreground">Protein</p>
+                <p className="text-xs text-muted-foreground">{t('protein')}</p>
               </div>
               <div className="bg-secondary/50 rounded-2xl p-4 text-center">
                 <Wheat className="w-5 h-5 text-amber-500 mx-auto mb-1" />
                 <p className="text-lg font-bold">{selectedFood.carbs || 0}g</p>
-                <p className="text-xs text-muted-foreground">Carbs</p>
+                <p className="text-xs text-muted-foreground">{t('carbs')}</p>
               </div>
               <div className="bg-secondary/50 rounded-2xl p-4 text-center">
                 <Droplets className="w-5 h-5 text-blue-500 mx-auto mb-1" />
                 <p className="text-lg font-bold">{selectedFood.fats || 0}g</p>
-                <p className="text-xs text-muted-foreground">Fats</p>
+                <p className="text-xs text-muted-foreground">{t('fats')}</p>
               </div>
             </div>
           </div>
@@ -524,59 +614,18 @@ const Dashboard = () => {
         />
       )}
 
-      <nav className={`fixed bottom-0 left-0 right-0 bg-card border-t border-border safe-area-bottom
-  transition-transform duration-300 ease-out
-  ${isNavHidden ? 'translate-y-full' : 'translate-y-0'}`}>
-        <div className="relative flex items-center justify-around py-2 ">
-          {/* Home */}
-          <Link
-            to="/dashboard"
-            className={`flex flex-col items-center gap-0.5 px-4 ${location.pathname === '/dashboard'
-              ? 'text-primary'
-              : 'text-muted-foreground'
-              }`}
-          >
-            <svg className="w-6 h-6 mb-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
-            <span className="text-[10px]">Home</span>
-          </Link>
-
-          {/* Analytics */}
-          <Link
-            to="/progress"
-            className={`flex flex-col items-center gap-0.5 px-4 ${location.pathname === '/progress'
-              ? 'text-primary'
-              : 'text-muted-foreground'
-              }`}
-          >
-            <svg className="w-6 h-6 mb-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
-            <span className="text-[10px]">Analytics</span>
-          </Link>
-
-          {/* Settings (extra right spacing so it doesn't go under +) */}
-          <Link
-            to="/profile"
-            className={`flex flex-col items-center gap-0.5 px-4 pr-16 ${location.pathname === '/profile'
-              ? 'text-primary'
-              : 'text-muted-foreground'
-              }`}
-          >
-            <svg className="w-6 h-6 mb-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-            <span className="text-[10px]">Settings</span>
-          </Link>
-
-          {/* FLOATING + BUTTON */}
-          <Link
-            to="/scanner"
-            className="absolute -top-6 right-4"
-          >
-            <div className="w-14 h-14 rounded-full bg-black flex items-center justify-center shadow-xl active:scale-95 transition-transform">
-              <Plus className="w-7 h-7 text-white" />
-            </div>
-          </Link>
-        </div>
-      </nav>
 
 
+
+
+      {/* Water Intake Sheet */}
+      <WaterIntakeSheet
+        isOpen={showWaterSheet}
+        onClose={() => setShowWaterSheet(false)}
+        currentIntake={waterIntake}
+        onSave={handleUpdateWater}
+        goal={goals.water_intake || 2000}
+      />
 
     </div>
   );

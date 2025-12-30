@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { FormPageSkeleton } from '@/components/skeletons';
+import { useTranslation } from 'react-i18next';
 
 interface NutritionGoals {
   daily_calories: number;
@@ -18,13 +19,23 @@ interface NutritionGoals {
   daily_sodium: number;
 }
 
+const CACHE: Record<string, { data: NutritionGoals, timestamp: number }> = {};
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 const NutritionGoalsPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [loading, setLoading] = useState(true);
+  const { t } = useTranslation();
+
+  // Cache check
+  const cacheKey = user?.id || 'anon';
+  const cached = CACHE[cacheKey];
+  const isCacheValid = cached && (Date.now() - cached.timestamp < CACHE_TTL);
+
+  const [loading, setLoading] = useState(!isCacheValid);
   const [saving, setSaving] = useState(false);
   const [showMicronutrients, setShowMicronutrients] = useState(false);
-  const [goals, setGoals] = useState<NutritionGoals>({
+  const [goals, setGoals] = useState<NutritionGoals>(isCacheValid ? cached.data : {
     daily_calories: 2000,
     daily_protein: 150,
     daily_carbs: 200,
@@ -35,10 +46,10 @@ const NutritionGoalsPage = () => {
   });
 
   useEffect(() => {
-    if (user) {
+    if (user?.id) {
       fetchGoals();
     }
-  }, [user]);
+  }, [user?.id]);
 
   const fetchGoals = async () => {
     if (!user) return;
@@ -53,7 +64,7 @@ const NutritionGoalsPage = () => {
       if (error) throw error;
 
       if (data) {
-        setGoals({
+        const fetchedGoals = {
           daily_calories: data.daily_calories || 2000,
           daily_protein: data.daily_protein || 150,
           daily_carbs: data.daily_carbs || 200,
@@ -61,7 +72,16 @@ const NutritionGoalsPage = () => {
           daily_fiber: data.daily_fiber || 25,
           daily_sugar: data.daily_sugar || 50,
           daily_sodium: data.daily_sodium || 2300,
-        });
+        };
+        setGoals(fetchedGoals);
+
+        // Update Cache
+        if (user?.id) {
+          CACHE[user.id] = {
+            data: fetchedGoals,
+            timestamp: Date.now()
+          };
+        }
       }
     } catch (error) {
       console.error('Error fetching goals:', error);
@@ -90,11 +110,11 @@ const NutritionGoalsPage = () => {
 
       if (error) throw error;
 
-      toast.success('Nutrition goals saved!');
+      toast.success(t('goals_update_success'));
       navigate('/profile');
     } catch (error) {
       console.error('Error saving goals:', error);
-      toast.error('Failed to save goals');
+      toast.error(t('goals_update_failed'));
     } finally {
       setSaving(false);
     }
@@ -149,7 +169,7 @@ const NutritionGoalsPage = () => {
   );
 
   return (
-    <div className="min-h-screen bg-background flex flex-col safe-area-top safe-area-bottom page-gradient">
+    <div className="min-h-screen bg-background flex flex-col safe-area-top safe-area-bottom">
       <div className="px-6 py-6">
         <div className="flex items-center gap-4 mb-8">
           <button onClick={() => navigate('/profile')} className="p-2 -ml-2 rounded-full hover:bg-secondary/50">
@@ -157,13 +177,13 @@ const NutritionGoalsPage = () => {
           </button>
         </div>
 
-        <h1 className="text-3xl font-bold mb-8">Edit nutrition goals</h1>
+        <h1 className="text-3xl font-bold mb-8">{t('edit_nutrition_goals')}</h1>
 
         <div className="space-y-2">
           <MacroCard
             icon={Flame}
             field="daily_calories"
-            label="Calorie goal"
+            label={t('calories')}
             color="text-foreground"
             bgColor="bg-secondary"
             ringColor="border-foreground/80"
@@ -171,7 +191,7 @@ const NutritionGoalsPage = () => {
           <MacroCard
             icon={Beef}
             field="daily_protein"
-            label="Protein goal"
+            label={t('protein')}
             color="text-red-500"
             bgColor="bg-red-50"
             ringColor="border-red-500/30 border-t-red-500 border-r-red-500" // Simulating partial ring
@@ -179,7 +199,7 @@ const NutritionGoalsPage = () => {
           <MacroCard
             icon={Wheat}
             field="daily_carbs"
-            label="Carb goal"
+            label={t('carbs')}
             color="text-amber-500"
             bgColor="bg-amber-50"
             ringColor="border-amber-500/30 border-t-amber-500 border-l-amber-500"
@@ -187,7 +207,7 @@ const NutritionGoalsPage = () => {
           <MacroCard
             icon={Droplets}
             field="daily_fats"
-            label="Fat goal"
+            label={t('fats')}
             color="text-blue-500"
             bgColor="bg-blue-50"
             ringColor="border-blue-500/30 border-b-blue-500 border-r-blue-500"
@@ -199,7 +219,7 @@ const NutritionGoalsPage = () => {
             onClick={() => setShowMicronutrients(!showMicronutrients)}
             className="flex items-center gap-2 text-muted-foreground font-medium mx-auto hover:text-foreground transition-colors"
           >
-            <span>View micronutrients</span>
+            <span>{t('view_micronutrients')}</span>
             {showMicronutrients ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
 
@@ -208,7 +228,7 @@ const NutritionGoalsPage = () => {
               <MacroCard
                 icon={Salad}
                 field="daily_sodium"
-                label="Sodium (mg)"
+                label={`${t('sodium')} (mg)`}
                 color="text-emerald-500"
                 bgColor="bg-emerald-50"
                 ringColor="border-emerald-500/30 border-l-emerald-500"
@@ -216,7 +236,7 @@ const NutritionGoalsPage = () => {
               <MacroCard
                 icon={Candy}
                 field="daily_sugar"
-                label="Sugar (g)"
+                label={`${t('sugar')} (g)`}
                 color="text-pink-500"
                 bgColor="bg-pink-50"
                 ringColor="border-pink-500/30 border-r-pink-500"
@@ -224,7 +244,7 @@ const NutritionGoalsPage = () => {
               <MacroCard
                 icon={Apple}
                 field="daily_fiber"
-                label="Fiber (g)"
+                label={`${t('fiber')} (g)`}
                 color="text-purple-500"
                 bgColor="bg-purple-50"
                 ringColor="border-purple-500/30 border-t-purple-500"
@@ -239,7 +259,7 @@ const NutritionGoalsPage = () => {
             disabled={saving}
             className="w-full h-14 rounded-full text-lg font-semibold"
           >
-            {saving ? 'Saving...' : 'Save Goals'}
+            {saving ? t('saving') : t('save_goals')}
           </Button>
         </div>
       </div>

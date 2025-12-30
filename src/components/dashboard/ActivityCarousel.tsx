@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Footprints, Flame, Plus, Minus, Settings, Beef, Wheat, Droplet, Leaf, Candy, HeartPulse } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -27,6 +28,7 @@ interface UserGoals {
   daily_fiber: number;
   daily_sugar: number;
   daily_sodium: number;
+  water_intake: number;
 }
 
 interface NutritionData {
@@ -44,6 +46,7 @@ interface NutritionData {
 interface ActivityCarouselProps {
   selectedDate: Date;
   onDataChange?: () => void;
+  onWaterClick?: () => void;
   nutritionData: NutritionData;
 }
 
@@ -54,9 +57,10 @@ interface DailyLog {
   water_intake: number;
 }
 
-const ActivityCarousel = ({ selectedDate, onDataChange, nutritionData }: ActivityCarouselProps) => {
+const ActivityCarousel = ({ selectedDate, onDataChange, onWaterClick, nutritionData }: ActivityCarouselProps) => {
   const { user } = useAuth();
   const { earnBadge, hasBadge } = useBadges();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [currentSlide, setCurrentSlide] = useState(0);
   const [dailyLog, setDailyLog] = useState<DailyLog>({
@@ -71,7 +75,6 @@ const ActivityCarousel = ({ selectedDate, onDataChange, nutritionData }: Activit
   const containerRef = useRef<HTMLDivElement>(null);
 
   const stepsGoal = 10000;
-  const waterGoalCups = 8;
   const cupsInMl = 250;
   const minSwipeDistance = 50;
 
@@ -83,6 +86,7 @@ const ActivityCarousel = ({ selectedDate, onDataChange, nutritionData }: Activit
       hasLoggedWaterBefore(user.id).then(setHasLoggedWater);
     }
   }, [user, selectedDate]);
+
 
   const fetchDailyLog = async () => {
     if (!user) return;
@@ -106,12 +110,6 @@ const ActivityCarousel = ({ selectedDate, onDataChange, nutritionData }: Activit
           steps: (data as any).steps || 0,
           calories_burned: (data as any).calories_burned || 0,
           water_intake: data.water_intake || 0
-        });
-      } else {
-        setDailyLog({
-          steps: 0,
-          calories_burned: 0,
-          water_intake: 0
         });
       }
     } catch (error) {
@@ -203,10 +201,10 @@ const ActivityCarousel = ({ selectedDate, onDataChange, nutritionData }: Activit
     }
   };
 
-  const waterCups = Math.floor(dailyLog.water_intake / cupsInMl);
-  const waterOz = Math.round(dailyLog.water_intake * 0.033814);
-
   const { caloriesLeft, proteinLeft, carbsLeft, fatsLeft, fiberLeft, sugarLeft, sodiumLeft, dailyTotals, goals } = nutritionData;
+
+  const waterOz = Math.round(dailyLog.water_intake * 0.033814);
+  const waterGoalOz = Math.round((goals.water_intake || 2000) * 0.033814);
 
   // Calculate health score (0-10) based on how well macros are balanced
   const calculateOverallHealthScore = (): { score: number; message: string } => {
@@ -242,18 +240,18 @@ const ActivityCarousel = ({ selectedDate, onDataChange, nutritionData }: Activit
     else if (proteinPercent >= 70) goodNutrients.push('protein');
 
     if (carbsPercent >= 70 && fatsPercent >= 70) {
-      message = 'Carbs and fat are on track.';
+      message = t('health_msg_track');
     }
 
     if (lowNutrients.length > 0) {
-      message += ` You're low in ${lowNutrients.join(' and ')}, which can slow weight loss and impact muscle retention.`;
+      message += ` ${t('health_msg_low', { nutrients: lowNutrients.map(n => t(n)).join(` ${t('and')} `) })}`;
     } else if (avgScore >= 8) {
-      message = 'Great job! Your nutrition is well balanced today.';
+      message = t('health_msg_balanced');
     } else if (dailyTotals.calories === 0) {
-      message = 'Start logging meals to see your health score.';
+      message = t('health_msg_start');
     }
 
-    return { score: avgScore, message: message.trim() || 'Keep tracking to improve your score!' };
+    return { score: avgScore, message: message.trim() || t('health_msg_improve') };
   };
 
   const healthScore = calculateOverallHealthScore();
@@ -269,7 +267,7 @@ const ActivityCarousel = ({ selectedDate, onDataChange, nutritionData }: Activit
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-4xl font-bold">{Math.round(caloriesLeft)}</p>
-                <p className="text-muted-foreground">Calories left</p>
+                <p className="text-muted-foreground">{t('calories_left')}</p>
               </div>
 
               {/* Ring + Icon */}
@@ -329,7 +327,7 @@ const ActivityCarousel = ({ selectedDate, onDataChange, nutritionData }: Activit
                 <Droplet className="absolute w-4 h-4 text-fats" />
               </div>
               <p className="font-bold mt-2 text-sm">{Math.round(fatsLeft)}g</p>
-              <p className="text-xs text-muted-foreground">Fat</p>
+              <p className="text-xs text-muted-foreground">{t('fats')}</p>
             </div>
           </div>
         </div>
@@ -390,13 +388,13 @@ const ActivityCarousel = ({ selectedDate, onDataChange, nutritionData }: Activit
 
           {/* Health Score */}
           <div
-            className="bg-card rounded-2xl p-4 shadow-soft cursor-pointer active:scale-[0.98] transition-transform"
+            className="bg-card  rounded-2xl p-4 shadow-soft cursor-pointer active:scale-[0.98] transition-transform"
             onClick={() => navigate('/daily-breakdown')}
           >
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center justify-between h-12 mb-2">
               <div className="flex items-center gap-2">
                 <HeartPulse className="w-5 h-5 text-primary" />
-                <p className="font-semibold text-base">Health score</p>
+                <p className="font-semibold text-base">{t('health_score')}</p>
               </div>
               <p className="text-lg font-bold">{healthScore.score}/10</p>
             </div>
@@ -431,7 +429,7 @@ const ActivityCarousel = ({ selectedDate, onDataChange, nutritionData }: Activit
                 </div>
                 <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
                   <Footprints className="w-3.5 h-3.5" />
-                  <span>Steps</span>
+                  <span>{t('steps')}</span>
                 </div>
               </div>
 
@@ -472,32 +470,36 @@ const ActivityCarousel = ({ selectedDate, onDataChange, nutritionData }: Activit
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Calories burned
+                  {t('calories_burned')}
                 </p>
               </div>
 
               <div className="flex items-center gap-2 mt-3">
                 <Footprints className="w-4 h-4 text-muted-foreground" />
                 <p className="text-xs text-muted-foreground">
-                  +{dailyLog.steps} steps
+                  +{dailyLog.steps} {t('steps')}
                 </p>
               </div>
             </div>
           </div>
 
+
           {/* Bottom Row: Water (Compact Full Width) */}
           <div className="bg-card rounded-2xl p-3 shadow-soft">
             <div className="flex items-center justify-between ">
-              <div className="flex items-center gap-3 h-16">
+              <div
+                className="flex items-center gap-3 h-16 flex-1 cursor-pointer active:opacity-70 transition-opacity"
+                onClick={onWaterClick}
+              >
                 <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
                   <Droplet className="w-5 h-5 text-blue-500" fill="currentColor" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold">Water</p>
+                  <p className="text-sm font-semibold">{t('water')}</p>
                   <p className="text-sm font-bold">
                     {waterOz} fl oz
                     <span className="text-xs text-muted-foreground ml-1">
-                      ({waterCups} cups)
+                      / {waterGoalOz} oz
                     </span>
                   </p>
                 </div>

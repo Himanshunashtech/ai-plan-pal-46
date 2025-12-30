@@ -28,7 +28,7 @@ export const useHealthConnect = (): UseHealthConnectReturn => {
     caloriesBurned: 0,
     lastSynced: null
   });
-  
+
   // Store the plugin reference in a ref to avoid re-renders
   const healthConnectRef = useRef<any>(null);
   const isInitialized = useRef(false);
@@ -38,20 +38,20 @@ export const useHealthConnect = (): UseHealthConnectReturn => {
     const checkAvailability = async () => {
       if (isInitialized.current) return;
       isInitialized.current = true;
-      
+
       // Only load on Android native platform
       if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== 'android') {
         return;
       }
 
       try {
-        // const module = await import('capacitor-health-connect');
+        // const module = await import('@pianissimoproject/capacitor-health-connect');
         // healthConnectRef.current = module.HealthConnect;
-        
+
         if (healthConnectRef.current) {
           const result = await healthConnectRef.current.checkAvailability();
           setIsAvailable(result.availability === 'Available');
-          
+
           // Check if we already have permissions
           if (result.availability === 'Available') {
             const permissions = await healthConnectRef.current.checkHealthPermissions({
@@ -66,7 +66,7 @@ export const useHealthConnect = (): UseHealthConnectReturn => {
         setIsAvailable(false);
       }
     };
-    
+
     checkAvailability();
   }, []);
 
@@ -94,7 +94,7 @@ export const useHealthConnect = (): UseHealthConnectReturn => {
 
       const granted = result.grantedPermissions?.length > 0;
       setIsConnected(granted);
-      
+
       return granted;
     } catch (error) {
       console.error('Error requesting Health Connect permissions:', error);
@@ -177,7 +177,7 @@ export const useHealthConnect = (): UseHealthConnectReturn => {
     try {
       const now = new Date();
       const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      
+
       // Read steps for today
       const stepsResult = await HealthConnect.readRecords({
         type: 'Steps',

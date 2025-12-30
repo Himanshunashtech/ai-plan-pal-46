@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { useAppSelector } from '@/store/hooks';
+import { useTranslation } from 'react-i18next';
 
 interface DailyLog {
     water_intake: number;
@@ -19,11 +20,13 @@ interface NutritionGoals {
     daily_fiber: number;
     daily_sugar: number;
     daily_sodium: number;
+    water_intake: number;
 }
 
 const DailyBreakdown = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
+    const { t } = useTranslation();
     const [loading, setLoading] = useState(true);
     const [waterIntake, setWaterIntake] = useState(0);
 
@@ -47,20 +50,21 @@ const DailyBreakdown = () => {
         daily_fiber: 25,
         daily_sugar: 50,
         daily_sodium: 2300,
+        water_intake: 2000,
     });
 
     useEffect(() => {
-        if (user) {
+        if (user?.id) {
             Promise.all([fetchGoals(), fetchWaterLog()]).then(() => setLoading(false));
         }
-    }, [user]);
+    }, [user?.id]);
 
     const fetchGoals = async () => {
         if (!user) return;
         try {
             const { data, error } = await supabase
                 .from('profiles')
-                .select('daily_calories, daily_protein, daily_carbs, daily_fats, daily_fiber, daily_sugar, daily_sodium')
+                .select('daily_calories, daily_protein, daily_carbs, daily_fats, daily_fiber, daily_sugar, daily_sodium, water_intake')
                 .eq('user_id', user.id)
                 .maybeSingle();
 
@@ -73,6 +77,7 @@ const DailyBreakdown = () => {
                     daily_fiber: data.daily_fiber || 25,
                     daily_sugar: data.daily_sugar || 50,
                     daily_sodium: data.daily_sodium || 2300,
+                    water_intake: (data as any).water_intake || 2000,
                 });
             }
         } catch (error) {
@@ -111,13 +116,13 @@ const DailyBreakdown = () => {
         if (totals.protein >= goals.daily_protein * 0.8) points += 2;
         if (totals.fiber >= goals.daily_fiber * 0.8) points += 2;
         if (totals.sugar <= goals.daily_sugar) points += 2;
-        if (waterIntake >= 2000) points += 2; // Approx 8 cups
+        if (waterIntake >= goals.water_intake) points += 2;
         return points;
     };
     const healthScore = calculateScore();
 
     return (
-        <div className="min-h-screen bg-background flex flex-col safe-area-top safe-area-bottom page-gradient">
+        <div className="min-h-screen bg-background flex flex-col safe-area-top safe-area-bottom ">
             <div className="px-6 py-6 pb-24 overflow-auto">
                 {/* Header */}
                 <div className="flex items-center gap-4 mb-6">
@@ -126,22 +131,18 @@ const DailyBreakdown = () => {
                     </button>
                 </div>
 
-                <h1 className="text-3xl font-bold mb-8">Daily Breakdown</h1>
+                <h1 className="text-2xl font-bold mb-6 px-1">{t('daily_breakdown')}</h1>
 
                 <div className="space-y-6">
                     {/* Calories Card */}
                     <div className="bg-card rounded-3xl p-6 shadow-soft">
-                        <div className="flex items-start justify-between mb-6">
-                            <div>
-                                <p className="text-muted-foreground font-medium mb-1">Calories</p>
-                                <div className="flex items-baseline gap-1">
-                                    <span className="text-3xl font-bold">{Math.round(totals.calories)}</span>
-                                    <span className="text-muted-foreground text-lg">/{goals.daily_calories} cal</span>
-                                </div>
-                            </div>
-                            <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center">
-                                <Flame className="w-6 h-6 text-foreground" />
-                            </div>
+                        <h3 className="font-semibold flex items-center gap-2 mb-6">
+                            <Flame className="w-5 h-5 text-orange-500" />
+                            {t('calories')}
+                        </h3>
+                        <div className="flex items-baseline gap-1">
+                            <span className="text-3xl font-bold">{Math.round(totals.calories)}</span>
+                            <span className="text-muted-foreground text-lg">/{goals.daily_calories} cal</span>
                         </div>
 
                         <div className="space-y-4 mb-6">
@@ -168,13 +169,7 @@ const DailyBreakdown = () => {
                             </div>
                         </div>
 
-                        <Button
-                            variant="outline"
-                            className="w-full rounded-full h-12 font-semibold border-2"
-                            onClick={() => navigate('/nutrition-goals')}
-                        >
-                            Edit Daily Goals
-                        </Button>
+
                     </div>
 
                     {/* Water Card */}
@@ -183,7 +178,7 @@ const DailyBreakdown = () => {
                             <p className="text-muted-foreground font-medium mb-1">Water</p>
                             <div className="flex items-baseline gap-1">
                                 <span className="text-3xl font-bold">{waterOz}</span>
-                                <span className="text-muted-foreground">/64 fl oz</span>
+                                <span className="text-muted-foreground">/{Math.round(goals.water_intake * 0.033814)} fl oz</span>
                             </div>
                         </div>
                         <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center">
@@ -195,9 +190,9 @@ const DailyBreakdown = () => {
                     <div className="bg-card rounded-3xl p-6 shadow-soft">
                         <div className="flex items-start justify-between mb-6">
                             <div>
-                                <p className="text-muted-foreground font-medium mb-1">Health score</p>
+                                <p className="text-muted-foreground font-medium mb-1">{t('health_score')}</p>
                                 <p className="text-2xl font-bold">
-                                    {healthScore >= 1 ? 'Evaluated' : 'Not evaluated'}
+                                    {healthScore >= 1 ? t('evaluated') : t('not_evaluated')}
                                 </p>
                             </div>
                             <div className="relative w-12 h-12 flex items-center justify-center">
@@ -242,6 +237,14 @@ const DailyBreakdown = () => {
                         </div>
                     </div>
                 </div>
+            </div>
+            <div className=" bottom-22 left-0 right-0 p-5 bg-gradient-to-t from-background via-background/80 to-transparent">
+                <Button
+                    className="w-full h-14 rounded-2xl text-lg font-semibold shadow-lg shadow-accent/20"
+                    onClick={() => navigate('/nutrition-goals')}
+                >
+                    {t('edit_goals')}
+                </Button>
             </div>
         </div>
     );

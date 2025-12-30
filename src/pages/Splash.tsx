@@ -5,13 +5,26 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { WifiOff, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import alleAiLogo from '@/assets/alle-ai-logo.png';
-
+import welcomeVideo from "../assets/welcome-demo.mp4";
 
 type SplashState = 'loading' | 'checking' | 'offline' | 'redirecting';
 
 const Splash = () => {
 
   const navigate = useNavigate();
+
+  // Preload video
+  useEffect(() => {
+    const link = document.createElement('link');
+    link.rel = 'preload';
+    link.as = 'video';
+    link.href = welcomeVideo;
+    document.head.appendChild(link);
+
+    return () => {
+      document.head.removeChild(link);
+    };
+  }, []);
   const [state, setState] = useState<SplashState>('loading');
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
@@ -154,7 +167,7 @@ const Splash = () => {
       <div className="flex flex-col items-center gap-6 animate-fade-in">
         {/* Logo */}
         <div className="relative">
-          <div className={`w-20 h-20 rounded-3xl bg-background flex items-center justify-center transition-transform duration-300 ${state === 'redirecting' ? 'scale-110' : ''}`}>
+          <div className={`w-24 h-24 rounded-[2rem] bg-white shadow-xl shadow-black/5 flex items-center justify-center transition-transform duration-500 ${state === 'redirecting' ? 'scale-110' : ''}`}>
             <img src={alleAiLogo} alt="Calo Logo" className="w-16 h-16 object-contain" />
           </div>
         </div>

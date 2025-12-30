@@ -64,6 +64,9 @@ export async function logFoodFromLibrary(
     protein: Math.round(food.protein * quantity * 10) / 10,
     carbs: Math.round(food.carbs * quantity * 10) / 10,
     fats: Math.round(food.fats * quantity * 10) / 10,
+    fiber: food.fiber ? Math.round(food.fiber * quantity * 10) / 10 : 0,
+    sugar: food.sugar ? Math.round(food.sugar * quantity * 10) / 10 : 0,
+    sodium: food.sodium ? Math.round(food.sodium * quantity) : 0,
     serving_size: food.servingSize,
     image_url: food.image,
     logged_at: new Date().toISOString()

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Home, BarChart3, Scan, User, Camera, Barcode, Image, BookOpen } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import FoodScanner from '@/components/scanner/FoodScanner';
 import BarcodeScanner from '@/components/scanner/BarcodeScanner';
 import FoodLibrary from '@/components/scanner/FoodLibrary';
@@ -25,20 +26,21 @@ const Scanner = () => {
   const dispatch = useAppDispatch();
   const { user } = useAuth();
   const { earnBadge, hasBadge } = useBadges();
+  const { t } = useTranslation();
   const [activeMode, setActiveMode] = useState<ScanMode>('food');
   const [earnedBadgeId, setEarnedBadgeId] = useState<string | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
 
   const tabs = [
-    { id: 'food' as const, icon: Camera, label: 'Scan Food' },
-    { id: 'barcode' as const, icon: Barcode, label: 'Barcode' },
-    { id: 'label' as const, icon: Image, label: 'Food Label' },
-    { id: 'library' as const, icon: BookOpen, label: 'Library' },
+    { id: 'food' as const, icon: Camera, label: t('scan_food') },
+    { id: 'barcode' as const, icon: Barcode, label: t('barcode') },
+    { id: 'label' as const, icon: Image, label: t('food_label') },
+    { id: 'library' as const, icon: BookOpen, label: t('library') },
   ];
 
   const handleFoodLogged = async (result: FoodAnalysisResult, imageBase64: string) => {
     if (!user) {
-      toast({ title: 'Error', description: 'Please log in to save food entries', variant: 'destructive' });
+      toast({ title: t('error'), description: t('login_to_save'), variant: 'destructive' });
       return;
     }
 
@@ -123,8 +125,8 @@ const Scanner = () => {
           <div className="flex-1 flex flex-col items-center justify-center px-6">
             <div className="text-center text-white/60">
               <Image className="w-16 h-16 mx-auto mb-4" />
-              <p className="text-lg font-medium mb-2">Food Label Scanner</p>
-              <p className="text-sm">Scan nutrition labels for accurate data</p>
+              <p className="text-lg font-medium mb-2">{t('food_label')}</p>
+              <p className="text-sm">{t('label_scanner_desc')}</p>
             </div>
           </div>
         )}
@@ -134,7 +136,7 @@ const Scanner = () => {
           <div className="flex-1 flex flex-col items-center justify-center px-6 pb-48">
             <div className="text-center text-white/60">
               <Camera className="w-16 h-16 mx-auto mb-4" />
-              <p>Select a scanning mode below</p>
+              <p>{t('select_mode')}</p>
             </div>
           </div>
         )}
@@ -149,10 +151,10 @@ const Scanner = () => {
                 <button
                   key={id}
                   onClick={() => handleTabChange(id)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all ${activeMode === id
-                    ? 'bg-secondary text-secondary-foreground'
-                    : 'text-muted-foreground'
-                    }`}
+                  className={`flex items - center gap - 2 px - 4 py - 2 rounded - full transition - all ${activeMode === id
+                      ? 'bg-secondary text-secondary-foreground'
+                      : 'text-muted-foreground'
+                    } `}
                 >
                   <Icon className="w-4 h-4" />
                   {activeMode === id && (

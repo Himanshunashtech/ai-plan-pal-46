@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { fetchUserStreak, selectUserStreak } from '@/store/slices/gamificationSlice';
 
 export interface Notification {
   id: string;
@@ -13,189 +15,173 @@ export interface Notification {
   created_at: string;
 }
 
-export interface UserStreak {
-  current_streak: number;
-  longest_streak: number;
-  last_log_date: string | null;
-}
-
 export function useNotifications() {
   const { user } = useAuth();
+  const dispatch = useAppDispatch();
+
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [streak, setStreak] = useState<UserStreak | null>(null);
-  const [loading, setLoading] = useState(true);
+  const streak = useAppSelector(selectUserStreak);
+  const [loading, setLoading] = useState(false);
 
-  const fetchNotifications = useCallback(async () => {
+  const fetchedForUserRef = useRef<string | null>(null);
+  const mountedRef = useRef(true);
+
+  /* ----------------------------------
+   * Fetch Notifications
+   * ---------------------------------- */
+  const fetchNotifications = useCallback(async (userId: string) => {
+    const now = new Date().toISOString();
+
+    const { data, error } = await supabase
+      .from('user_notifications')
+      .select('*')
+      .eq('user_id', userId)
+      .or(`snoozed_until.is.null,snoozed_until.lt.${now}`)
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (error) throw error;
+    if (!mountedRef.current) return;
+
+    const mapped: Notification[] = (data || []).map((n) => ({
+      id: n.id,
+      title: n.title,
+      message: n.message,
+      type: n.type,
+      read: n.read,
+      snoozed_until: n.snoozed_until,
+      data: n.data as Record<string, unknown> | null,
+      created_at: n.created_at,
+    }));
+
+    setNotifications(mapped);
+    setUnreadCount(mapped.filter((n) => !n.read).length);
+  }, []);
+
+  /* ----------------------------------
+   * Fetch Streak (SAFE for new users)
+   * ---------------------------------- */
+  const fetchStreak = useCallback(async (userId: string) => {
+    await dispatch(fetchUserStreak(userId));
+  }, [dispatch]);
+
+  /* ----------------------------------
+   * Initial Fetch (ONCE per user)
+   * ---------------------------------- */
+  useEffect(() => {
     if (!user?.id) return;
+    if (fetchedForUserRef.current === user.id) return;
 
-    try {
-      const now = new Date().toISOString();
-      const { data, error } = await supabase
-        .from('user_notifications')
-        .select('*')
-        .eq('user_id', user.id)
-        .or(`snoozed_until.is.null,snoozed_until.lt.${now}`)
-        .order('created_at', { ascending: false })
-        .limit(50);
+    fetchedForUserRef.current = user.id;
+    mountedRef.current = true;
+    setLoading(true);
 
-      if (error) throw error;
-
-      const mapped = (data || []).map((n) => ({
-        id: n.id,
-        title: n.title,
-        message: n.message,
-        type: n.type,
-        read: n.read,
-        snoozed_until: n.snoozed_until,
-        data: n.data as Record<string, unknown> | null,
-        created_at: n.created_at,
-      }));
-
-      setNotifications(mapped);
-      setUnreadCount(mapped.filter((n) => !n.read).length);
-    } catch (error) {
-      console.error('Error fetching notifications:', error);
-    }
-  }, [user?.id]);
-
-  const fetchStreak = useCallback(async () => {
-    if (!user?.id) return;
-
-    try {
-      const { data, error } = await supabase
-        .from('user_streaks')
-        .select('current_streak, longest_streak, last_log_date')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (error) throw error;
-
-      if (data) {
-        setStreak({
-          current_streak: data.current_streak,
-          longest_streak: data.longest_streak,
-          last_log_date: data.last_log_date,
-        });
-      } else {
-        // Create initial streak record
-        const { data: newStreak, error: createError } = await supabase
-          .from('user_streaks')
-          .insert({ user_id: user.id, current_streak: 0, longest_streak: 0 })
-          .select()
-          .single();
-
-        if (!createError && newStreak) {
-          setStreak({
-            current_streak: newStreak.current_streak,
-            longest_streak: newStreak.longest_streak,
-            last_log_date: newStreak.last_log_date,
-          });
+    Promise.all([
+      fetchNotifications(user.id),
+      fetchStreak(user.id),
+    ])
+      .catch((err) => {
+        console.error('Notification fetch error:', err);
+      })
+      .finally(() => {
+        if (mountedRef.current) {
+          setLoading(false);
         }
-      }
-    } catch (error) {
-      console.error('Error fetching streak:', error);
-    }
-  }, [user?.id]);
-
-  const markAsRead = useCallback(async (notificationId: string) => {
-    if (!user) return;
-
-    try {
-      await supabase
-        .from('user_notifications')
-        .update({ read: true })
-        .eq('id', notificationId)
-        .eq('user_id', user.id);
-
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === notificationId ? { ...n, read: true } : n))
-      );
-      setUnreadCount((prev) => Math.max(0, prev - 1));
-    } catch (error) {
-      console.error('Error marking notification as read:', error);
-    }
-  }, [user]);
-
-  const snoozeNotification = useCallback(async (notificationId: string, hours = 24) => {
-    if (!user) return;
-
-    try {
-      const snoozedUntil = new Date();
-      snoozedUntil.setHours(snoozedUntil.getHours() + hours);
-
-      await supabase
-        .from('user_notifications')
-        .update({ snoozed_until: snoozedUntil.toISOString() })
-        .eq('id', notificationId)
-        .eq('user_id', user.id);
-
-      setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
-    } catch (error) {
-      console.error('Error snoozing notification:', error);
-    }
-  }, [user]);
-
-  const deleteNotification = useCallback(async (notificationId: string) => {
-    if (!user) return;
-
-    try {
-      await supabase
-        .from('user_notifications')
-        .delete()
-        .eq('id', notificationId)
-        .eq('user_id', user.id);
-
-      setNotifications((prev) => {
-        const removed = prev.find((n) => n.id === notificationId);
-        if (removed && !removed.read) {
-          setUnreadCount((c) => Math.max(0, c - 1));
-        }
-        return prev.filter((n) => n.id !== notificationId);
       });
-    } catch (error) {
-      console.error('Error deleting notification:', error);
-    }
-  }, [user]);
+
+    return () => {
+      mountedRef.current = false;
+    };
+  }, [user?.id, fetchNotifications, fetchStreak]);
+
+  /* ----------------------------------
+   * Actions
+   * ---------------------------------- */
+  const markAsRead = useCallback(async (notificationId: string) => {
+    if (!user?.id) return;
+
+    await supabase
+      .from('user_notifications')
+      .update({ read: true })
+      .eq('id', notificationId)
+      .eq('user_id', user.id);
+
+    setNotifications((prev) =>
+      prev.map((n) =>
+        n.id === notificationId ? { ...n, read: true } : n
+      )
+    );
+    setUnreadCount((c) => Math.max(0, c - 1));
+  }, [user?.id]);
 
   const markAllAsRead = useCallback(async () => {
-    if (!user) return;
+    if (!user?.id) return;
 
-    try {
-      await supabase
-        .from('user_notifications')
-        .update({ read: true })
-        .eq('user_id', user.id)
-        .eq('read', false);
+    await supabase
+      .from('user_notifications')
+      .update({ read: true })
+      .eq('user_id', user.id)
+      .eq('read', false);
 
-      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-      setUnreadCount(0);
-    } catch (error) {
-      console.error('Error marking all as read:', error);
-    }
-  }, [user]);
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    setUnreadCount(0);
+  }, [user?.id]);
 
-  const lastFetchedUserId = useRef<string | undefined>(undefined);
+  const snoozeNotification = useCallback(async (notificationId: string, hours = 24) => {
+    if (!user?.id) return;
 
-  useEffect(() => {
-    if (user?.id && user.id !== lastFetchedUserId.current) {
-      lastFetchedUserId.current = user.id;
-      setLoading(true);
-      Promise.all([fetchNotifications(), fetchStreak()]).finally(() => {
-        setLoading(false);
-      });
-    }
-  }, [user?.id, fetchNotifications, fetchStreak]);
+    const until = new Date();
+    until.setHours(until.getHours() + hours);
+
+    await supabase
+      .from('user_notifications')
+      .update({ snoozed_until: until.toISOString() })
+      .eq('id', notificationId)
+      .eq('user_id', user.id);
+
+    setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
+  }, [user?.id]);
+
+  const deleteNotification = useCallback(async (notificationId: string) => {
+    if (!user?.id) return;
+
+    await supabase
+      .from('user_notifications')
+      .delete()
+      .eq('id', notificationId)
+      .eq('user_id', user.id);
+
+    setNotifications((prev) => {
+      const removed = prev.find((n) => n.id === notificationId);
+      if (removed && !removed.read) {
+        setUnreadCount((c) => Math.max(0, c - 1));
+      }
+      return prev.filter((n) => n.id !== notificationId);
+    });
+  }, [user?.id]);
 
   return {
     notifications,
     unreadCount,
-    streak,
+    streak, // 🔥 NEVER NULL
     loading,
     markAsRead,
+    markAllAsRead,
     snoozeNotification,
     deleteNotification,
-    markAllAsRead,
-    refetch: fetchNotifications,
+    refetch: async () => {
+      if (user?.id) {
+        setLoading(true);
+        try {
+          await Promise.all([
+            fetchNotifications(user.id),
+            fetchStreak(user.id),
+          ]);
+        } finally {
+          setLoading(false);
+        }
+      }
+    },
   };
 }

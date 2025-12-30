@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Mail, Lock, Eye, EyeOff, Phone } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '@/integrations/supabase/client';
 import alleAiLogo from '@/assets/alle-ai-logo.png';
 import AccountRecoveryDialog from '@/components/auth/AccountRecoveryDialog';
@@ -23,6 +24,7 @@ const Auth = () => {
   const { signIn, signUp, signInWithGoogle, signInWithApple } = useAuth();
   const { toast } = useToast();
   const dispatch = useDispatch();
+  const { t } = useTranslation();
   const { data: onboardingData, generatedPlan } = useSelector((state: RootState) => state.onboarding);
 
   const initialMode = searchParams.get('mode') === 'signup' ? 'signup' : 'login';
@@ -123,8 +125,23 @@ const Auth = () => {
           current_weight: onboardingData.currentWeight,
           weight_unit: onboardingData.weightUnit,
           activity_level: onboardingData.activityLevel,
-          // If generatedPlan exists, we could save target weight here if column exists, 
-          // but mapped columns might differ. Keeping it safe.
+          goal: onboardingData.goal,
+          weekly_goal: onboardingData.weeklyGoal,
+          diet_type: onboardingData.dietType,
+          allergies: onboardingData.allergies,
+          meals_per_day: onboardingData.mealsPerDay,
+          // sleep_hours: onboardingData.sleepHours, // If you have this
+          stress_level: onboardingData.stressLevel,
+          motivation: onboardingData.motivation,
+          previous_diets: onboardingData.previousDiets,
+          cooking_time: onboardingData.cookingTime,
+          snacking: onboardingData.snacking,
+          exercise_frequency: onboardingData.exerciseFrequency,
+          exercise_type: onboardingData.exerciseType,
+          health_conditions: onboardingData.healthConditions,
+          medications: onboardingData.medications,
+          target_date: onboardingData.targetDate,
+          onboarding_completed: true,
         })
         .eq('user_id', userId);
 
@@ -142,12 +159,25 @@ const Auth = () => {
             daily_protein: generatedPlan.dailyProtein,
             daily_carbs: generatedPlan.dailyCarbs,
             daily_fats: generatedPlan.dailyFats,
-            // We could also save target_weight if schema supports it
+            target_weight: generatedPlan.targetWeight, // Saving target weight
+            water_intake: generatedPlan.dailyWater,    // Saving calculated water intake
           })
           .eq('user_id', userId);
 
         if (goalsError) console.error('Error syncing goals:', goalsError);
       }
+
+      // 3. Initialize Streak (User Request: Start with 1 day streak)
+      const { error: streakError } = await supabase
+        .from('user_streaks')
+        .upsert({
+          user_id: userId,
+          current_streak: 1,
+          longest_streak: 1,
+          last_log_date: new Date().toISOString()
+        }, { onConflict: 'user_id' });
+
+      if (streakError) console.error('Error initializing streak:', streakError);
 
       // Clear redux state after successful sync
       dispatch(resetOnboarding());
@@ -214,8 +244,8 @@ const Auth = () => {
           }
 
           toast({
-            title: "Account Created!",
-            description: "Let's complete your setup.",
+            title: t('account_created'),
+            description: t('setup_complete'),
           });
           navigate('/paywall');
         }
@@ -270,17 +300,10 @@ const Auth = () => {
       <div className="flex-1 flex flex-col px-6 py-8">
         {/* Header */}
         <div className="flex flex-col items-center mb-10 animate-fade-in">
-          <div className="w-16 h-16 rounded-2xl bg-background flex items-center justify-center mb-4">
+          <div className="w-16 h-16 rounded-3xl bg-background flex items-center justify-center mb-4 ">
             <img src={alleAiLogo} alt="Calo Logo" className="w-14 h-14 object-contain" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground">
-            {mode === 'login' ? 'Welcome Back!' : 'Create Account'}
-          </h1>
-          <p className="text-muted-foreground mt-1 text-center">
-            {mode === 'login'
-              ? 'Sign in to continue tracking'
-              : 'Start your health journey today'}
-          </p>
+
         </div>
 
         {/* Social Auth Buttons */}
@@ -326,7 +349,7 @@ const Auth = () => {
         </div> */}
 
         {/* Divider */}
-        <div className="relative my-6 animate-fade-in">
+        {/* <div className="relative my-6 animate-fade-in">
           <div className="absolute inset-0 flex items-center">
             <span className="w-full border-t border-border" />
           </div>
@@ -335,18 +358,18 @@ const Auth = () => {
               Or continue with email
             </span>
           </div>
-        </div>
+        </div> */}
 
         {/* Email Form */}
         <form onSubmit={handleSubmit} className="space-y-4 animate-fade-in">
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">{t('email')}</Label>
             <div className="relative">
               <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
               <Input
                 id="email"
                 type="email"
-                placeholder="Enter your email"
+                placeholder={t('enter_email')}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="pl-12 h-14 rounded-2xl"
@@ -356,13 +379,13 @@ const Auth = () => {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password">{t('password')}</Label>
             <div className="relative">
               <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
               <Input
                 id="password"
                 type={showPassword ? 'text' : 'password'}
-                placeholder="Enter your password"
+                placeholder={t('enter_password')}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="pl-12 pr-12 h-14 rounded-2xl"
@@ -387,7 +410,7 @@ const Auth = () => {
                 onClick={() => navigate('/forgot-password')}
                 className="text-sm text-accent font-medium hover:underline block"
               >
-                Forgot password?
+                {t('forgot_password')}
               </button>
             )}
           </div>
@@ -398,25 +421,25 @@ const Auth = () => {
             className="w-full mt-2"
             disabled={loading}
           >
-            {loading ? 'Please wait...' : mode === 'login' ? 'Sign In' : 'Create Account'}
+            {loading ? t('please_wait') : mode === 'login' ? t('sign_in') : t('create_account')}
           </Button>
         </form>
 
         {/* Action Toggle - simplified animation */}
         <div className="mt-8 text-center animate-fade-in">
           <p className="text-muted-foreground">
-            {mode === 'login' ? "New to Calo? " : "Already have an account? "}
+            {mode === 'login' ? t('new_to_calo') : t('already_have_account')}
             <button
               onClick={() => {
                 if (mode === 'login') {
-                  navigate('/welcome');
+                  navigate('/onboarding');
                 } else {
                   setMode('login');
                 }
               }}
               className="text-foreground font-semibold hover:underline"
             >
-              {mode === 'login' ? 'Get Started' : 'Sign In'}
+              {mode === 'login' ? t('get_started') : t('sign_in')}
             </button>
           </p>
         </div>

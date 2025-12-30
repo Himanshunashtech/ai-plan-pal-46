@@ -8,6 +8,7 @@ import { subscriptionApi } from '@/lib/api/subscription';
 import { toast } from '@/hooks/use-toast';
 import { SettingsPageSkeleton } from '@/components/skeletons';
 import { format } from 'date-fns';
+import { useTranslation } from 'react-i18next';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,6 +30,7 @@ interface SubscriptionInfo {
 const Subscription = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [subscription, setSubscription] = useState<SubscriptionInfo>({
     status: 'free',
@@ -59,8 +61,8 @@ const Subscription = () => {
         setSubscription({
           status: profile.subscription_status || 'free',
           expiresAt: profile.subscription_expires_at,
-          plan: profile.subscription_status === 'active' ? 'Premium' : 
-                profile.subscription_status === 'trial' ? 'Trial' : 'Free'
+          plan: profile.subscription_status === 'active' ? t('premium') :
+            profile.subscription_status === 'trial' ? t('trial') : t('free')
         });
       }
     } catch (error) {
@@ -77,24 +79,24 @@ const Subscription = () => {
     try {
       // Start subscription via API
       const result = await subscriptionApi.startFreeTrial(user.id);
-      
+
       if (result.success) {
-        toast({ 
-          title: '🎉 Subscription Started!', 
-          description: 'Welcome to Premium! Enjoy all features.' 
+        toast({
+          title: '🎉 Subscription Started!',
+          description: 'Welcome to Premium! Enjoy all features.'
         });
         await fetchSubscription();
       } else {
-        toast({ 
-          title: 'Error', 
+        toast({
+          title: 'Error',
           description: 'Failed to start subscription. Please try again.',
           variant: 'destructive'
         });
       }
     } catch (error) {
       console.error('Upgrade error:', error);
-      toast({ 
-        title: 'Error', 
+      toast({
+        title: 'Error',
         description: 'Something went wrong. Please try again.',
         variant: 'destructive'
       });
@@ -114,15 +116,15 @@ const Subscription = () => {
         .update({ subscription_status: 'cancelled' })
         .eq('user_id', user.id);
 
-      toast({ 
-        title: 'Subscription Cancelled', 
-        description: 'Your subscription has been cancelled. You can still use premium features until the end of your billing period.' 
+      toast({
+        title: 'Subscription Cancelled',
+        description: 'Your subscription has been cancelled. You can still use premium features until the end of your billing period.'
       });
       await fetchSubscription();
     } catch (error) {
       console.error('Cancel error:', error);
-      toast({ 
-        title: 'Error', 
+      toast({
+        title: 'Error',
         description: 'Failed to cancel subscription. Please try again.',
         variant: 'destructive'
       });
@@ -138,32 +140,32 @@ const Subscription = () => {
     try {
       // Check subscription status via API
       const result = await subscriptionApi.getSubscriptionStatus(user.id);
-      
+
       if (result.isPremium) {
         await supabase
           .from('profiles')
-          .update({ 
+          .update({
             subscription_status: 'active',
-            subscription_expires_at: result.expiresAt 
+            subscription_expires_at: result.expiresAt
           })
           .eq('user_id', user.id);
 
-        toast({ 
-          title: 'Purchases Restored!', 
-          description: 'Your subscription has been restored successfully.' 
+        toast({
+          title: 'Purchases Restored!',
+          description: 'Your subscription has been restored successfully.'
         });
         await fetchSubscription();
       } else {
-        toast({ 
-          title: 'No Active Subscription', 
-          description: 'No active subscription found to restore.' 
+        toast({
+          title: 'No Active Subscription',
+          description: 'No active subscription found to restore.'
         });
       }
     } catch (error) {
       console.error('Restore error:', error);
-      toast({ 
-        title: 'Restore Complete', 
-        description: 'Checked for purchases. No active subscription found.' 
+      toast({
+        title: 'Restore Complete',
+        description: 'Checked for purchases. No active subscription found.'
       });
     } finally {
       setIsRestoring(false);
@@ -176,31 +178,31 @@ const Subscription = () => {
   const plans = [
     {
       id: 'monthly' as const,
-      name: 'Monthly',
+      name: t('monthly'),
       price: '$20',
       period: '/month',
-      description: 'Billed monthly',
+      description: t('billed_monthly'),
       badge: null
     },
     {
       id: 'yearly' as const,
-      name: 'Yearly',
+      name: t('yearly'),
       price: '$10',
       period: '/month',
-      description: 'Billed $120/year',
-      badge: 'SAVE 50%'
+      description: t('billed_yearly'),
+      badge: t('save_50')
     }
   ];
 
   const features = [
-    'Unlimited AI food scanning',
-    'Advanced nutrition analytics',
-    'Personalized meal suggestions',
-    'Detailed macro tracking',
-    'Priority customer support',
-    'Ad-free experience',
-    'Export data to CSV',
-    'Sync across all devices'
+    t('feature_unlimited_scan'),
+    t('feature_advanced_analytics'),
+    t('feature_meal_suggestions'),
+    t('feature_macro_tracking'),
+    t('feature_support'),
+    t('feature_ad_free'),
+    t('feature_export'),
+    t('feature_sync')
   ];
 
   if (loading) {
@@ -220,31 +222,28 @@ const Subscription = () => {
           >
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <h1 className="text-lg font-semibold">Subscription</h1>
+          <h1 className="text-lg font-semibold">{t('subscription')}</h1>
         </div>
       </header>
 
       <div className="flex-1 px-4 py-6 overflow-auto pb-24">
         {/* Current Plan Status */}
-        <div className={`rounded-2xl p-6 mb-6 ${
-          isActive ? 'bg-gradient-to-br from-amber-500/20 to-orange-500/20 border border-amber-500/30' :
-          isCancelled ? 'bg-gradient-to-br from-red-500/20 to-orange-500/20 border border-red-500/30' :
-          'bg-card border border-border'
-        }`}>
+        <div className={`rounded-2xl p-6 mb-6 ${isActive ? 'bg-gradient-to-br from-amber-500/20 to-orange-500/20 border border-amber-500/30' :
+            isCancelled ? 'bg-gradient-to-br from-red-500/20 to-orange-500/20 border border-red-500/30' :
+              'bg-card border border-border'
+          }`}>
           <div className="flex items-center gap-3 mb-3">
-            <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-              isActive ? 'bg-amber-500/20' : 'bg-muted'
-            }`}>
+            <div className={`w-12 h-12 rounded-full flex items-center justify-center ${isActive ? 'bg-amber-500/20' : 'bg-muted'
+              }`}>
               <Crown className={`w-6 h-6 ${isActive ? 'text-amber-500' : 'text-muted-foreground'}`} />
             </div>
             <div>
-              <h2 className="font-bold text-lg">{subscription.plan} Plan</h2>
-              <p className={`text-sm ${
-                isActive ? 'text-amber-600' : 
-                isCancelled ? 'text-red-500' : 
-                'text-muted-foreground'
-              }`}>
-                {isActive ? 'Active' : isCancelled ? 'Cancelled' : 'Free Tier'}
+              <h2 className="font-bold text-lg">{subscription.plan} {t('plan')}</h2>
+              <p className={`text-sm ${isActive ? 'text-amber-600' :
+                  isCancelled ? 'text-red-500' :
+                    'text-muted-foreground'
+                }`}>
+                {isActive ? t('active') : isCancelled ? t('cancelled') : t('free_tier')}
               </p>
             </div>
           </div>
@@ -253,7 +252,7 @@ const Subscription = () => {
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Calendar className="w-4 h-4" />
               <span>
-                {isCancelled ? 'Access until: ' : 'Renews: '}
+                {isCancelled ? t('access_until') : t('renews')}
                 {format(new Date(subscription.expiresAt), 'MMM d, yyyy')}
               </span>
             </div>
@@ -263,7 +262,7 @@ const Subscription = () => {
             <div className="mt-4 flex items-start gap-2 p-3 rounded-lg bg-red-500/10">
               <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
               <p className="text-sm text-red-600">
-                Your subscription has been cancelled. You'll lose access to premium features after your current billing period ends.
+                {t('subscription_cancelled_desc')}
               </p>
             </div>
           )}
@@ -272,15 +271,14 @@ const Subscription = () => {
         {/* Upgrade Section (shown for free/cancelled users) */}
         {!isActive && (
           <>
-            <h3 className="font-semibold mb-4">Choose a Plan</h3>
+            <h3 className="font-semibold mb-4">{t('choose_plan')}</h3>
             <div className="grid grid-cols-2 gap-4 mb-6">
               {plans.map((plan) => (
                 <button
                   key={plan.id}
                   onClick={() => setSelectedPlan(plan.id)}
-                  className={`p-4 rounded-2xl border-2 transition-all relative ${
-                    selectedPlan === plan.id ? 'border-primary bg-primary/5' : 'border-border bg-card'
-                  }`}
+                  className={`p-4 rounded-2xl border-2 transition-all relative ${selectedPlan === plan.id ? 'border-primary bg-primary/5' : 'border-border bg-card'
+                    }`}
                 >
                   {plan.badge && (
                     <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-green-500 text-white text-xs px-2 py-0.5 rounded-full font-medium">
@@ -298,7 +296,7 @@ const Subscription = () => {
             </div>
 
             {/* Features List */}
-            <h3 className="font-semibold mb-4">Premium Features</h3>
+            <h3 className="font-semibold mb-4">{t('premium_features')}</h3>
             <div className="bg-card rounded-2xl p-4 mb-6 border border-border">
               <div className="space-y-3">
                 {features.map((feature, i) => (
@@ -312,8 +310,8 @@ const Subscription = () => {
               </div>
             </div>
 
-            <Button 
-              size="lg" 
+            <Button
+              size="lg"
               className="w-full mb-4"
               onClick={handleUpgrade}
               disabled={isUpgrading}
@@ -321,12 +319,12 @@ const Subscription = () => {
               {isUpgrading ? (
                 <>
                   <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                  Processing...
+                  {t('processing')}
                 </>
               ) : (
                 <>
                   <CreditCard className="w-5 h-5 mr-2" />
-                  Upgrade to Premium
+                  {t('upgrade_to_premium')}
                 </>
               )}
             </Button>
@@ -336,8 +334,8 @@ const Subscription = () => {
         {/* Active Subscription Management */}
         {isActive && (
           <div className="space-y-4">
-            <h3 className="font-semibold">Manage Subscription</h3>
-            
+            <h3 className="font-semibold">{t('manage_subscription')}</h3>
+
             <div className="bg-card rounded-2xl overflow-hidden border border-border">
               <button
                 className="w-full flex items-center justify-between p-4 hover:bg-secondary/50 transition-colors"
@@ -345,7 +343,7 @@ const Subscription = () => {
               >
                 <div className="flex items-center gap-3">
                   <CreditCard className="w-5 h-5 text-muted-foreground" />
-                  <span>Change Plan</span>
+                  <span>{t('change_plan')}</span>
                 </div>
                 <ArrowLeft className="w-5 h-5 text-muted-foreground rotate-180" />
               </button>
@@ -360,7 +358,7 @@ const Subscription = () => {
                   >
                     <div className="flex items-center gap-3">
                       <AlertCircle className="w-5 h-5" />
-                      <span>Cancel Subscription</span>
+                      <span>{t('cancel_subscription')}</span>
                     </div>
                     {isCancelling && <Loader2 className="w-5 h-5 animate-spin" />}
                   </button>
@@ -374,11 +372,11 @@ const Subscription = () => {
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Keep Subscription</AlertDialogCancel>
-                    <AlertDialogAction 
+                    <AlertDialogAction
                       onClick={handleCancelSubscription}
                       className="bg-red-500 hover:bg-red-600"
                     >
-                      Cancel Subscription
+                      {t('cancel_subscription')}
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
@@ -386,7 +384,7 @@ const Subscription = () => {
             </div>
 
             {/* Features included */}
-            <h3 className="font-semibold mt-6">Your Premium Features</h3>
+            <h3 className="font-semibold mt-6">{t('your_premium_features')}</h3>
             <div className="bg-card rounded-2xl p-4 border border-border">
               <div className="grid grid-cols-2 gap-3">
                 {features.map((feature, i) => (
@@ -401,8 +399,8 @@ const Subscription = () => {
         )}
 
         {/* Restore Purchases */}
-        <Button 
-          variant="outline" 
+        <Button
+          variant="outline"
           className="w-full mt-6"
           onClick={handleRestorePurchases}
           disabled={isRestoring}
@@ -410,21 +408,21 @@ const Subscription = () => {
           {isRestoring ? (
             <>
               <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-              Restoring...
+              {t('restoring')}
             </>
           ) : (
             <>
               <RefreshCw className="w-5 h-5 mr-2" />
-              Restore Purchases
+              {t('restore_purchases')}
             </>
           )}
         </Button>
 
         {/* Legal Links */}
         <div className="mt-8 flex justify-center gap-4 text-xs text-muted-foreground">
-          <button className="hover:text-foreground transition-colors">Terms of Service</button>
+          <button className="hover:text-foreground transition-colors">{t('terms_of_service')}</button>
           <span>•</span>
-          <button className="hover:text-foreground transition-colors">Privacy Policy</button>
+          <button className="hover:text-foreground transition-colors">{t('privacy_policy')}</button>
         </div>
       </div>
     </div>

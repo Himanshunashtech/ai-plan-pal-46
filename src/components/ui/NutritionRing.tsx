@@ -3,8 +3,9 @@ import * as React from "react";
 interface NutritionRingProps {
   value: number;
   max: number;
-  color: "calories" | "carbs" | "protein" | "fats" | "fiber" | "sugar" | "sodium";
+  color: "calories" | "carbs" | "protein" | "fats" | "fiber" | "sugar" | "sodium" | "water";
   size?: number;
+  className?: string;
 }
 
 const colorClasses = {
@@ -15,10 +16,11 @@ const colorClasses = {
   fiber: "stroke-fiber",
   sugar: "stroke-sugar",
   sodium: "stroke-sodium",
+  water: "stroke-blue-500",
 };
 
 const NutritionRing = React.forwardRef<HTMLDivElement, NutritionRingProps>(
-  ({ value, max, color, size = 60 }, ref) => {
+  ({ value, max, color, size = 60, className }, ref) => {
     const safeMax = Math.max(1, max || 1);
     const percentage = Math.min((value / safeMax) * 100, 100);
     const radius = (size - 8) / 2;
@@ -26,7 +28,7 @@ const NutritionRing = React.forwardRef<HTMLDivElement, NutritionRingProps>(
     const strokeDashoffset = circumference - (percentage / 100) * circumference;
 
     return (
-      <div ref={ref} className="relative" style={{ width: size, height: size }}>
+      <div ref={ref} className={`relative ${className || ''}`} style={{ width: size, height: size }}>
         <svg width={size} height={size} className="transform -rotate-90">
           <circle
             cx={size / 2}

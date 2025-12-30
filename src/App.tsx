@@ -8,11 +8,11 @@ import { RootState } from "./store";
 import { useEffect } from "react";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { AnimatePresence } from "framer-motion";
-import PageTransition from "@/components/layout/PageTransition";
 
 import OfflineBanner from "@/components/ui/OfflineBanner";
 import PublicRoute from "@/components/auth/PublicRoute";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import BottomNav from "@/components/layout/BottomNav";
 import Splash from "./pages/Splash";
 import Welcome from "./pages/Welcome";
 import Auth from "./pages/Auth";
@@ -34,14 +34,19 @@ import Milestones from "./pages/Milestones";
 import NotFound from "./pages/NotFound";
 import Help from "./pages/Help";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
+import WaterGoal from "./pages/WaterGoal";
 
-import { Capacitor } from '@capacitor/core';
+import { useBackgroundRefresh } from "@/hooks/useBackgroundRefresh";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 const queryClient = new QueryClient();
 
 const AppContent = () => {
   const theme = useSelector((state: RootState) => state.ui.theme);
-  const location = useLocation(); // Keep track of location for animation triggering
+  const location = useLocation();
+
+  // Initialize background data synchronization with backoff
+  useBackgroundRefresh();
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -81,61 +86,46 @@ const AppContent = () => {
   };
 
   return (
+    <ErrorBoundary>
+      <AnimatePresence mode="wait">
+        <Routes location={location} key={location.pathname}>
+          {/* Public routes */}
+          <Route path="/" element={<PublicRoute><Splash /></PublicRoute>} />
+          <Route path="/splash" element={<PublicRoute><Splash /></PublicRoute>} />
+          <Route path="/welcome" element={<PublicRoute><Welcome /></PublicRoute>} />
+          <Route path="/auth" element={<PublicRoute><Auth /></PublicRoute>} />
+          <Route path="/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
 
-    <AnimatePresence mode="wait">
-      <Routes location={location} key={location.pathname}>
-        {/* Public routes */}
-        <Route path="/" element={<PublicRoute><Splash /></PublicRoute>} />
-        <Route path="/splash" element={<PublicRoute><Splash /></PublicRoute>} />
-        <Route path="/welcome" element={<PublicRoute><Welcome /></PublicRoute>} />
-        <Route path="/auth" element={<PublicRoute><Auth /></PublicRoute>} />
-        <Route path="/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
+          {/* Onboarding */}
+          <Route path="/onboarding" element={<PublicRoute><Onboarding /></PublicRoute>} />
+          <Route path="/plan-ready" element={<PublicRoute><PlanReady /></PublicRoute>} />
 
-        {/* Onboarding */}
-        <Route path="/onboarding" element={<PublicRoute><Onboarding /></PublicRoute>} />
-        <Route path="/plan-ready" element={<PublicRoute><PlanReady /></PublicRoute>} />
+          {/* Protected */}
+          <Route path="/paywall" element={<ProtectedRoute><Paywall /></ProtectedRoute>} />
 
-        {/* Protected */}
-        <Route path="/paywall" element={<ProtectedRoute><Paywall /></ProtectedRoute>} />
+          {/* Main Tabs */}
+          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/progress" element={<ProtectedRoute><Progress /></ProtectedRoute>} />
+          <Route path="/scanner" element={<ProtectedRoute><Scanner /></ProtectedRoute>} />
+          <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
 
-        {/* Main Tabs with Transitions */}
-        <Route path="/dashboard" element={
-          <ProtectedRoute>
-            <PageTransition>
-              <Dashboard />
-            </PageTransition>
-          </ProtectedRoute>
-        } />
-        <Route path="/progress" element={
-          <ProtectedRoute>
-            <PageTransition>
-              <Progress />
-            </PageTransition>
-          </ProtectedRoute>
-        } />
-        <Route path="/scanner" element={<ProtectedRoute><Scanner /></ProtectedRoute>} />
-        <Route path="/profile" element={
-          <ProtectedRoute>
-            <PageTransition>
-              <Profile />
-            </PageTransition>
-          </ProtectedRoute>
-        } />
+          <Route path="/edit-profile" element={<ProtectedRoute><EditProfile /></ProtectedRoute>} />
+          <Route path="/nutrition-goals" element={<ProtectedRoute><NutritionGoals /></ProtectedRoute>} />
+          <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
+          <Route path="/email-preferences" element={<ProtectedRoute><EmailPreferences /></ProtectedRoute>} />
+          <Route path="/milestones" element={<ProtectedRoute><Milestones /></ProtectedRoute>} />
+          <Route path="/subscription" element={<ProtectedRoute><Subscription /></ProtectedRoute>} />
+          <Route path="/daily-breakdown" element={<ProtectedRoute><DailyBreakdown /></ProtectedRoute>} />
+          <Route path="/help" element={<ProtectedRoute><Help /></ProtectedRoute>} />
+          <Route path="/privacy-policy" element={<ProtectedRoute><PrivacyPolicy /></ProtectedRoute>} />
+          <Route path="/water-goal" element={<ProtectedRoute><WaterGoal /></ProtectedRoute>} />
 
-        <Route path="/edit-profile" element={<ProtectedRoute><EditProfile /></ProtectedRoute>} />
-        <Route path="/nutrition-goals" element={<ProtectedRoute><NutritionGoals /></ProtectedRoute>} />
-        <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
-        <Route path="/email-preferences" element={<ProtectedRoute><EmailPreferences /></ProtectedRoute>} />
-        <Route path="/milestones" element={<ProtectedRoute><Milestones /></ProtectedRoute>} />
-        <Route path="/subscription" element={<ProtectedRoute><Subscription /></ProtectedRoute>} />
-        <Route path="/daily-breakdown" element={<ProtectedRoute><DailyBreakdown /></ProtectedRoute>} />
-        <Route path="/help" element={<ProtectedRoute><Help /></ProtectedRoute>} />
-        <Route path="/privacy-policy" element={<ProtectedRoute><PrivacyPolicy /></ProtectedRoute>} />
-
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </AnimatePresence>
-
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </AnimatePresence>
+      {/* Conditionally render BottomNav */}
+      {['/dashboard', '/progress', '/profile'].includes(location.pathname) && <BottomNav />}
+    </ErrorBoundary>
   );
 };
 
@@ -155,6 +145,5 @@ const App = () => (
     </TooltipProvider>
   </QueryClientProvider>
 );
-
 
 export default App;

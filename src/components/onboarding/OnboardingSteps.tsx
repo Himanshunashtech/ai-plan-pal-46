@@ -8,6 +8,7 @@ import { WheelPicker } from '@/components/ui/WheelPicker';
 import { useState } from 'react';
 import { Check, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { calculatePlan } from '@/lib/nutrition-calculator';
 
 const OnboardingSteps = () => {
   const navigate = useNavigate();
@@ -16,7 +17,7 @@ const OnboardingSteps = () => {
   const [isGenerating, setIsGenerating] = useState(false);
 
   const handleNext = () => {
-    if (step === 15) {
+    if (step === 14) {
       generatePlan();
     } else {
       dispatch(nextStep());
@@ -56,36 +57,8 @@ const OnboardingSteps = () => {
     }
 
     // Calculate plan based on user data
-    const bmr = data.gender === 'male'
-      ? 88.362 + (13.397 * (data.currentWeight || 70)) + (4.799 * (data.height || 170)) - (5.677 * (data.age || 25))
-      : 447.593 + (9.247 * (data.currentWeight || 60)) + (3.098 * (data.height || 160)) - (4.330 * (data.age || 25));
-
-    const activityMultipliers: Record<string, number> = {
-      sedentary: 1.2,
-      light: 1.375,
-      moderate: 1.55,
-      active: 1.725,
-      very_active: 1.9
-    };
-
-    const tdee = bmr * (activityMultipliers[data.activityLevel || 'moderate'] || 1.55);
-    let dailyCalories = Math.round(tdee);
-
-    if (data.goal === 'lose') dailyCalories -= 500;
-    if (data.goal === 'gain') dailyCalories += 300;
-
-    dispatch(setGeneratedPlan({
-      dailyCalories,
-      dailyCarbs: Math.round(dailyCalories * 0.45 / 4),
-      dailyProtein: Math.round(dailyCalories * 0.30 / 4),
-      dailyFats: Math.round(dailyCalories * 0.25 / 9),
-      targetWeight: data.targetWeight || data.currentWeight || 65,
-      recommendation: data.goal === 'lose'
-        ? 'Based on your profile, we recommend a moderate calorie deficit for sustainable weight loss.'
-        : data.goal === 'gain'
-          ? 'Based on your profile, we recommend a slight calorie surplus to support muscle growth.'
-          : 'Based on your profile, we recommend maintaining your current intake for stable weight.'
-    }));
+    const plan = calculatePlan(data);
+    dispatch(setGeneratedPlan(plan));
 
     setIsGenerating(false);
     navigate('/plan-ready');
@@ -108,8 +81,9 @@ const OnboardingSteps = () => {
       case 9: return true; // New Interstitial
       case 10: return !!data.activityLevel;
       case 11: return !!data.dietType;
-      case 12: return true; // New Interstitial
-      case 13: return true; // Default value exists
+      case 12: return true; // Default value exists (was 13)
+      case 13: return true; // (was 14)
+      case 14: return true; // (was 15)
       default: return true;
     }
   };
@@ -554,72 +528,6 @@ const OnboardingSteps = () => {
       case 12:
         return (
           <div className="flex flex-col h-full">
-            <div className="flex-1 flex flex-col items-center justify-start text-center px-4 pt-4">
-              <h2 className="text-3xl font-bold mb-12 text-foreground leading-tight">Simple direct food scanning, not just barcode scanning!</h2>
-
-              <div className="grid grid-cols-2 gap-4 w-full max-w-md">
-                {/* Traditional Side */}
-                <div className="flex flex-col items-center">
-                  <div className="bg-muted/30 rounded-[2.5rem] p-4  w-full relative overflow-hidden flex flex-col items-center group transition-all duration-500 hover:bg-muted/50 border border-transparent">
-                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-8">Traditional Counter</span>
-                    <div className="flex-1 flex flex-col items-center justify-center text-center p-2 mb-8">
-                      <p className="text-base font-bold text-foreground">Only available for food with barcode</p>
-                    </div>
-                    <div className="mt-auto w-full px-4 mb-4">
-                      <div className="relative w-full aspect-[4/3] bg-muted/20 rounded-2xl overflow-hidden flex items-center justify-center grayscale group-hover:grayscale-0 transition-all duration-700">
-                        <div className="w-20 h-10 bg-white shadow-sm rounded flex items-center justify-center flex-col gap-0.5 transform -rotate-12">
-                          <div className="flex gap-0.5">
-                            {[1, 2, 3, 4, 5, 6].map(i => <div key={i} className="w-1 h-6 bg-black"></div>)}
-                          </div>
-                          <span className="text-[6px] font-mono">2 913456 8906</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* AI Side */}
-                <div className="flex flex-col items-center">
-                  <div className="bg-amber-100 rounded-[2.5rem] p-4  w-full relative overflow-hidden flex flex-col items-center group transition-all duration-500 hover:bg-amber-200 border-2 border-primary/20">
-                    <div className="absolute top-2 right-4 text-green-500 bg-white rounded-full p-1 shadow-sm">
-                      <Check className="w-4 h-4" />
-                    </div>
-                    <span className="text-xs font-bold text-amber-700 uppercase tracking-widest mb-8">AI Calorie Counter</span>
-                    <div className="flex-1 flex flex-col items-center justify-center text-center p-2 mb-8">
-                      <p className="text-base font-extrabold text-amber-900 leading-tight">Simply take a picture of the food to get details</p>
-                    </div>
-                    <div className="mt-auto w-full px-2 mb-4">
-                      <div className="relative w-full aspect-square bg-[#FF8C00] rounded-3xl overflow-hidden flex items-center justify-center p-1 shadow-inner group-hover:scale-105 transition-transform duration-500">
-                        <div className="w-full h-full rounded-2xl overflow-hidden border-2 border-white/30 relative">
-                          <img
-                            src="https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=300&h=300&fit=crop"
-                            alt="Healthy Salad"
-                            className="w-full h-full object-cover"
-                          />
-                          <div className="absolute inset-0 bg-black/5 flex items-center justify-center">
-                            <div className="w-12 h-12 bg-white/90 rounded-full shadow-lg flex items-center justify-center">
-                              <Loader2 className="w-6 h-6 text-primary animate-spin" />
-                            </div>
-                          </div>
-                          {/* Recognition Badge */}
-                          <div className="absolute bottom-2 right-2 bg-green-500 text-white rounded-full p-1.5 shadow-lg animate-bounce-slow">
-                            <div className="bg-white/20 rounded-full p-1">
-                              <span className="text-xs">📸</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-
-      case 13:
-        return (
-          <div className="flex flex-col h-full">
             <div className="flex-1 flex flex-col items-center">
               <h2 className="text-2xl font-bold mb-2 text-foreground">How often do you exercise?</h2>
               <p className="text-muted-foreground mb-12">Days per week you work out.</p>
@@ -635,7 +543,7 @@ const OnboardingSteps = () => {
           </div>
         );
 
-      case 14:
+      case 13:
         return (
           <div className="flex flex-col h-full">
             <div className="flex-1 flex flex-col items-center justify-center text-center">
@@ -664,7 +572,7 @@ const OnboardingSteps = () => {
           </div>
         );
 
-      case 15:
+      case 14:
         return (
           <div className="animate-fade-in flex flex-col h-full">
             <div className="flex-1 flex flex-col items-center justify-center text-center">
@@ -723,7 +631,7 @@ const OnboardingSteps = () => {
               <Loader2 className="w-5 h-5 mr-2 animate-spin" />
               Generating Plan...
             </>
-          ) : step === 15 ? (
+          ) : step === 14 ? (
             'Generate My Plan'
           ) : step === 9 ? (
             'Sounds Great'

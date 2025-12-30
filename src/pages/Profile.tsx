@@ -24,7 +24,6 @@ import { Switch } from "@/components/ui/switch";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "@/store";
 import { setTheme } from "@/store/slices/uiSlice";
-import { useHideOnScroll } from "@/hooks/useHideOnScroll";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import clsx from "clsx";
@@ -47,7 +46,7 @@ interface ProfileInfo {
   age: number | null;
 }
 
-import i18nInstance from "@/i18n";
+// import i18nInstance from "@/i18n"; // Removed direct import
 
 // Helper Components
 
@@ -87,15 +86,15 @@ const Profile = () => {
   ];
 
   const changeLanguage = (code: string) => {
-    i18nInstance.changeLanguage(code === 'en-GB' ? 'en' : code);
+    i18n.changeLanguage(code === 'en-GB' ? 'en' : code);
     setLanguageOpen(false);
   };
 
-  const isNavHidden = useHideOnScroll();
+
 
   useEffect(() => {
     const fetchProfile = async () => {
-      if (!user) return;
+      if (!user?.id) return;
 
       // Load from cache first to ensure state is populated even if we init with false
       const cached = localStorage.getItem(`profile_cache_${user.id}`);
@@ -122,7 +121,7 @@ const Profile = () => {
       }
     };
     fetchProfile();
-  }, [user]);
+  }, [user?.id]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -155,7 +154,7 @@ const Profile = () => {
   return (
     <div className="min-h-screen bg-background flex flex-col safe-area-top safe-area-bottom">
       <div className="flex-1 px-5 py-6 pb-24 overflow-auto">
-        <h1 className="text-2xl font-bold mb-6 px-1">Settings</h1>
+        <h1 className="text-2xl font-bold mb-6 px-1">{t('settings')}</h1>
 
         {/* User Card */}
         <div className="bg-card rounded-[20px] p-4 shadow-sm mb-6 flex items-center gap-4">
@@ -171,7 +170,7 @@ const Profile = () => {
               {profileInfo.full_name || "User"}
             </p>
             <p className="text-sm text-muted-foreground mt-0.5">
-              {profileInfo.age ? `${profileInfo.age} years old` : "No age set"}
+              {profileInfo.age ? `${profileInfo.age} ${t('years_old')}` : t('no_age_set')}
             </p>
           </div>
         </div>
@@ -183,10 +182,12 @@ const Profile = () => {
 
           {/* General Settings */}
           <div className="bg-card rounded-[24px] overflow-hidden shadow-sm">
-            <MenuItem icon={Wallet} label="Personal details" onClick={() => navigate('/edit-profile')} />
-            <MenuItem icon={Target} label="Adjust macronutrients" onClick={() => navigate('/nutrition-goals')} />
-            <MenuItem icon={Scale} label="Goal & current weight" onClick={() => navigate('/edit-profile')} />
-            <MenuItem icon={History} label="Weight history" border={false} onClick={() => navigate('/progress')} />
+            <MenuItem icon={Wallet} label={t('personal_details')} onClick={() => navigate('/edit-profile')} />
+            <MenuItem icon={Target} label={t('adjust_macros')} onClick={() => navigate('/nutrition-goals')} />
+            <MenuItem icon={Target} label={t('milestones')} onClick={() => navigate('/milestones')} />
+            <MenuItem icon={Wallet} label={t('subscription')} onClick={() => navigate('/subscription')} />
+            <MenuItem icon={Scale} label={t('goal_weight')} onClick={() => navigate('/edit-profile')} />
+            <MenuItem icon={History} label={t('weight_history')} border={false} onClick={() => navigate('/progress')} />
           </div>
 
           <div className="bg-card rounded-[24px] overflow-hidden shadow-sm">
@@ -205,77 +206,44 @@ const Profile = () => {
           {/* Preferences */}
           <div>
             <h2 className="text-base font-bold text-foreground mb-4 px-1 flex items-center gap-2">
-              <SettingsIcon /> Preferences
+              <SettingsIcon /> {t('preferences')}
             </h2>
             <div className="bg-card rounded-[24px] overflow-hidden shadow-sm p-2">
               {/* Appearance */}
               <div className="flex items-center justify-between p-4 border-b border-border/40">
                 <div>
-                  <p className="font-medium">Appearance</p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">Choose light, dark, or system</p>
+                  <p className="font-medium">{t('appearance')}</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">{t('theme_desc')}</p>
                 </div>
                 <Select value={theme} onValueChange={(v: any) => dispatch(setTheme(v))}>
                   <SelectTrigger className="w-24 h-8 text-xs rounded-full border-border/50 bg-secondary/50">
                     <SelectValue placeholder="Theme" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="light">Light</SelectItem>
-                    <SelectItem value="dark">Dark</SelectItem>
-                    <SelectItem value="system">System</SelectItem>
+                    <SelectItem value="light">{t('light')}</SelectItem>
+                    <SelectItem value="dark">{t('dark')}</SelectItem>
+                    <SelectItem value="system">{t('system')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               {/* Toggles */}
-              <ToggleItem label="Add Burned Calories" subLabel="Add burned calories to daily goal" />
-              <ToggleItem label="Rollover calories" subLabel="Add up to 200 left over calories from yesterday" />
-              <ToggleItem label="Badge Celebrations" subLabel="Show celebrations when you unlock new badges" defaultChecked={true} border={false} />
+              <ToggleItem label={t('add_burned')} subLabel={t('add_burned_desc')} />
+              <ToggleItem label={t('rollover')} subLabel={t('rollover_desc')} />
+              <ToggleItem label={t('badge_cel')} subLabel={t('badge_cel_desc')} defaultChecked={true} border={false} />
             </div>
           </div>
 
           {/* Widgets Section */}
-          <div>
-            <div className="flex items-center justify-between mb-4 px-1">
-              <h2 className="text-base font-bold text-foreground">Widgets</h2>
-              <Link to="#" className="text-xs text-muted-foreground hover:text-primary">How to add?</Link>
-            </div>
 
-            <div className="flex gap-4 overflow-x-auto pb-4 snap-x hide-scrollbar">
-              {/* Widget Preview 1: Calories */}
-              <div className="snap-center shrink-0 w-36 h-36 bg-card rounded-[24px] shadow-sm p-4 flex flex-col items-center justify-center border-2 border-transparent hover:border-primary/20 transition-all cursor-pointer">
-                <div className="relative w-20 h-20 mb-2">
-                  <div className="absolute inset-0 border-4 border-muted rounded-full"></div>
-                  <div className="absolute inset-0 border-4 border-primary rounded-full border-t-transparent border-l-transparent -rotate-45"></div>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-xl font-bold">709</span>
-                    <span className="text-[9px] text-muted-foreground">Calories left</span>
-                  </div>
-                </div>
-                <div className="absolute top-2 right-2">
-                  <div className="w-2 h-2 rounded-full bg-red-500"></div>
-                </div>
-              </div>
-
-              {/* Widget Preview 2: Log Food Shortcut */}
-              <div className="snap-center shrink-0 w-36 h-36 bg-card rounded-[24px] shadow-sm p-4 flex flex-col items-center justify-center border-2 border-transparent hover:border-primary/20 transition-all cursor-pointer">
-                <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center mb-3 shadow-lg shadow-primary/30">
-                  <Plus className="w-6 h-6 text-primary-foreground" />
-                </div>
-                <div className="bg-foreground text-background text-[10px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1">
-                  <Smartphone className="w-3 h-3" />
-                  Log your food
-                </div>
-              </div>
-            </div>
-          </div>
 
           {/* Support & Legal */}
           <div className="bg-card rounded-[24px] overflow-hidden shadow-sm">
-            <MenuItem icon={Info} label="Terms and Conditions" />
-            <MenuItem icon={ShieldCheck} label="Privacy Policy" onClick={() => navigate('/privacy-policy')} />
-            <MenuItem icon={Mail} label="Support Email" />
-            <MenuItem icon={HelpCircle} label="Feature Request" onClick={() => navigate('/help')} />
-            <MenuItem icon={User} label="Delete Account?" border={false} danger onClick={() => setDeleteOpen(true)} />
+            <MenuItem icon={Info} label={t('terms')} />
+            <MenuItem icon={ShieldCheck} label={t('privacy')} onClick={() => navigate('/privacy-policy')} />
+            <MenuItem icon={Mail} label={t('support')} />
+            <MenuItem icon={HelpCircle} label={t('feature_req')} onClick={() => navigate('/help')} />
+            <MenuItem icon={User} label={t('delete_account')} border={false} danger onClick={() => setDeleteOpen(true)} />
           </div>
 
           {/* Footer Actions */}
@@ -285,55 +253,33 @@ const Profile = () => {
               className="flex items-center gap-2 text-sm font-medium hover:opacity-80 transition-opacity"
             >
               <LogOut className="w-4 h-4" />
-              Logout
+              {t('logout')}
             </button>
             <p className="text-[10px] text-muted-foreground mt-6 text-center tracking-widest uppercase">
-              Version 1.0.184
+              {t('version')} 1.0.184
             </p>
           </div>
         </div>
       </div>
 
       {/* Bottom Navigation */}
-      <nav
-        className={`fixed bottom-0 left-0 right-0 bg-card border-t border-border safe-area-bottom
-        transition-transform duration-300 ease-out z-50
-        ${isNavHidden ? "translate-y-full" : "translate-y-0"}`}
-      >
-        {/* Same Nav as before */}
-        <div className="grid grid-cols-3 items-center py-2">
-          {/* ... Nav Items ... Use existing component or recreate */}
-          {/* Recreating for layout consistency in this rewrite */}
-          <div className="flex flex-col items-center text-muted-foreground cursor-pointer" onClick={() => navigate('/dashboard')}>
-            <svg className="w-6 h-6 mb-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
-            <span className="text-[10px]">Home</span>
-          </div>
-          <div className="flex flex-col items-center text-muted-foreground cursor-pointer" onClick={() => navigate('/progress')}>
-            <svg className="w-6 h-6 mb-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
-            <span className="text-[10px]">Analytics</span>
-          </div>
-          <div className="flex flex-col items-center text-primary cursor-pointer">
-            <svg className="w-6 h-6 mb-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-            <span className="text-[10px]">Settings</span>
-          </div>
-        </div>
-      </nav>
+
 
       {/* Logout Dialog */}
       <AlertDialog open={logoutOpen} onOpenChange={setLogoutOpen}>
         <AlertDialogContent className="max-w-[300px] rounded-3xl p-6">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-center text-xl">Log out?</AlertDialogTitle>
+            <AlertDialogTitle className="text-center text-xl">{t('logout_confirm')}</AlertDialogTitle>
             <AlertDialogDescription className="text-center">
-              You'll need to sign in again to access your account.
+              {t('logout_desc')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col gap-3 space-x-0 mt-4">
             <AlertDialogAction onClick={handleSignOut} className="w-full h-12 rounded-full bg-red-500 hover:bg-red-600">
-              Log Out
+              {t('logout')}
             </AlertDialogAction>
             <AlertDialogCancel className="w-full h-12 rounded-full border-0 bg-secondary hover:bg-secondary/80 mt-0">
-              Cancel
+              {t('cancel')}
             </AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -343,9 +289,9 @@ const Profile = () => {
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent className="max-w-[300px] rounded-3xl p-6">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-center text-xl text-red-500">Delete Account?</AlertDialogTitle>
+            <AlertDialogTitle className="text-center text-xl text-red-500">{t('delete_account')}</AlertDialogTitle>
             <AlertDialogDescription className="text-center">
-              This will permanently delete your account and data. You won't be able to log in again.
+              {t('delete_account_desc')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col gap-3 space-x-0 mt-4">
@@ -354,10 +300,10 @@ const Profile = () => {
               className="w-full h-12 rounded-full bg-red-500 hover:bg-red-600"
               disabled={deleting}
             >
-              {deleting ? "Deleting..." : "Delete Forever"}
+              {deleting ? t('deleting') : t('delete_forever')}
             </AlertDialogAction>
             <AlertDialogCancel className="w-full h-12 rounded-full border-0 bg-secondary hover:bg-secondary/80 mt-0">
-              Cancel
+              {t('cancel')}
             </AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -367,6 +313,7 @@ const Profile = () => {
         <AlertDialogContent className="max-w-[300px] rounded-3xl p-6">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-center text-xl mb-2">{t('language')}</AlertDialogTitle>
+            <AlertDialogDescription className="sr-only">Select your preferred language.</AlertDialogDescription>
           </AlertDialogHeader>
           <div className="space-y-2">
             {languages.map((lang) => (
@@ -386,7 +333,7 @@ const Profile = () => {
           </div>
           <AlertDialogFooter className="mt-4">
             <AlertDialogCancel className="w-full h-12 rounded-full border-0 bg-secondary hover:bg-secondary/80 mt-0">
-              Close
+              {t('cancel')}
             </AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
