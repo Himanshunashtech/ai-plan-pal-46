@@ -86,6 +86,7 @@ const Scanner = () => {
 
       // 3. Rollback on Failure
       dispatch(rollbackFoodEntry({
+        id: `temp-${Date.now()}`,
         calories: result.totalNutrition.calories,
         protein: result.totalNutrition.protein,
         carbs: result.totalNutrition.carbs,

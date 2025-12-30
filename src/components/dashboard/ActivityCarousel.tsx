@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Footprints, Flame, Plus, Minus, Settings, Beef, Wheat, Droplet, Leaf, Candy, HeartPulse } from 'lucide-react';
+import { Footprints, Flame, Plus, Minus, Settings, Beef, Wheat, Droplet, Leaf, Candy, HeartPulse, Zap } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
+import { addDays, isSameDay } from 'date-fns';
 
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -9,6 +11,8 @@ import { useBadges } from '@/hooks/useBadges';
 import { hasLoggedWaterBefore } from '@/lib/badge-triggers';
 import NutritionRing from '@/components/ui/NutritionRing';
 import HealthConnectWidget from '@/components/dashboard/HealthConnectWidget';
+import BurnedCaloriesSheet from '@/components/dashboard/BurnedCaloriesSheet';
+import RolloverCaloriesSheet from '@/components/dashboard/RolloverCaloriesSheet';
 
 interface DailyTotals {
   calories: number;
@@ -55,6 +59,7 @@ interface DailyLog {
   steps: number;
   calories_burned: number;
   water_intake: number;
+  rollover_calories?: number;
 }
 
 const ActivityCarousel = ({ selectedDate, onDataChange, onWaterClick, nutritionData }: ActivityCarouselProps) => {
@@ -66,12 +71,16 @@ const ActivityCarousel = ({ selectedDate, onDataChange, onWaterClick, nutritionD
   const [dailyLog, setDailyLog] = useState<DailyLog>({
     steps: 0,
     calories_burned: 0,
-    water_intake: 0
+    water_intake: 0,
+    rollover_calories: 0
   });
   const [loading, setLoading] = useState(false);
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const [hasLoggedWater, setHasLoggedWater] = useState(true);
+  const [showBurnedSheet, setShowBurnedSheet] = useState(false);
+  const [showRolloverSheet, setShowRolloverSheet] = useState(false);
+  const [alreadyRolledOver, setAlreadyRolledOver] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const stepsGoal = 10000;
@@ -109,9 +118,28 @@ const ActivityCarousel = ({ selectedDate, onDataChange, onWaterClick, nutritionD
           id: data.id,
           steps: (data as any).steps || 0,
           calories_burned: (data as any).calories_burned || 0,
-          water_intake: data.water_intake || 0
+          water_intake: data.water_intake || 0,
+          rollover_calories: (data as any).rollover_calories || 0
+        });
+      } else {
+        setDailyLog({
+          steps: 0,
+          calories_burned: 0,
+          water_intake: 0,
+          rollover_calories: 0
         });
       }
+
+      // Check if we already rolled over for tomorrow
+      const tomorrowStr = addDays(selectedDate, 1).toISOString().split('T')[0];
+      const { data: tomorrowData } = await supabase
+        .from('daily_nutrition_logs')
+        .select('rollover_calories')
+        .eq('user_id', user.id)
+        .eq('log_date', tomorrowStr)
+        .maybeSingle();
+      
+      setAlreadyRolledOver(!!(tomorrowData as any)?.rollover_calories && (tomorrowData as any).rollover_calories > 0);
     } catch (error) {
       console.error('Error fetching daily log:', error);
     } finally {
@@ -175,6 +203,58 @@ const ActivityCarousel = ({ selectedDate, onDataChange, onWaterClick, nutritionD
     if (change > 0 && wasZero && !hasLoggedWater && !hasBadge('hydrated')) {
       await earnBadge('hydrated');
       setHasLoggedWater(true);
+    }
+  };
+
+  const handleSaveBurnedCalories = (amount: number) => {
+    updateDailyLog({ calories_burned: amount });
+    toast.success(t('burned_calories_updated', { amount }));
+  };
+
+  const handleRolloverCalories = async () => {
+    if (!user) return;
+
+    const remainingCalories = caloriesLeft;
+    if (remainingCalories <= 0 || remainingCalories > 200) {
+      toast.error(t('rollover_only_200'));
+      return;
+    }
+
+    try {
+      const tomorrowStr = addDays(selectedDate, 1).toISOString().split('T')[0];
+      
+      // Check if tomorrow's log exists
+      const { data: existing } = await supabase
+        .from('daily_nutrition_logs')
+        .select('id, rollover_calories')
+        .eq('user_id', user.id)
+        .eq('log_date', tomorrowStr)
+        .maybeSingle();
+
+      if (existing?.id) {
+        await supabase
+          .from('daily_nutrition_logs')
+          .update({ 
+            rollover_calories: remainingCalories,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existing.id);
+      } else {
+        await supabase
+          .from('daily_nutrition_logs')
+          .insert({
+            user_id: user.id,
+            log_date: tomorrowStr,
+            rollover_calories: remainingCalories
+          });
+      }
+
+      setAlreadyRolledOver(true);
+      toast.success(t('calories_rolled_over', { amount: remainingCalories }));
+      onDataChange?.();
+    } catch (error) {
+      console.error('Error rolling over calories:', error);
+      toast.error(t('rollover_failed'));
     }
   };
 
@@ -266,21 +346,37 @@ const ActivityCarousel = ({ selectedDate, onDataChange, onWaterClick, nutritionD
           <div className="bg-card rounded-3xl p-6 shadow-soft">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-4xl font-bold">{Math.round(caloriesLeft)}</p>
+                <div className="flex items-baseline gap-2">
+                  <p className="text-4xl font-bold">{Math.round(caloriesLeft + (dailyLog.rollover_calories || 0))}</p>
+                  {dailyLog.rollover_calories && dailyLog.rollover_calories > 0 && (
+                    <span className="text-xs text-emerald-500 font-medium">+{dailyLog.rollover_calories} bonus</span>
+                  )}
+                </div>
                 <p className="text-muted-foreground">{t('calories_left')}</p>
               </div>
 
               {/* Ring + Icon */}
               <div className="relative flex items-center justify-center">
                 <NutritionRing
-                  value={caloriesLeft}
-                  max={goals.daily_calories}
+                  value={caloriesLeft + (dailyLog.rollover_calories || 0)}
+                  max={goals.daily_calories + (dailyLog.rollover_calories || 0)}
                   color="calories"
                   size={80}
                 />
                 <Flame className="absolute w-7 h-7 text-foreground" />
               </div>
             </div>
+            
+            {/* Rollover button - only show if calories left is 200 or less and it's today */}
+            {isSameDay(selectedDate, new Date()) && caloriesLeft > 0 && caloriesLeft <= 200 && (
+              <button
+                onClick={() => setShowRolloverSheet(true)}
+                className="mt-4 w-full flex items-center justify-center gap-2 py-2 px-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl text-emerald-600 dark:text-emerald-400 text-sm font-medium active:scale-[0.98] transition-transform"
+              >
+                <Zap className="w-4 h-4" />
+                {alreadyRolledOver ? t('already_rolled_over') : t('rollover_remaining')}
+              </button>
+            )}
           </div>
 
           {/* Macros */}
@@ -458,12 +554,15 @@ const ActivityCarousel = ({ selectedDate, onDataChange, onWaterClick, nutritionD
               />
             </div>
 
-            {/* Calories Burned */}
-            <div className="bg-card rounded-xl p-3 shadow-soft flex flex-col justify-between">
+            {/* Calories Burned - Clickable */}
+            <button
+              onClick={() => setShowBurnedSheet(true)}
+              className="bg-card rounded-xl p-3 shadow-soft flex flex-col justify-between text-left active:scale-[0.98] transition-transform"
+            >
               <div>
                 <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 bg-foreground rounded-full flex items-center justify-center">
-                    <Flame className="w-3.5 h-3.5 text-background" />
+                  <div className="w-6 h-6 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center">
+                    <Flame className="w-3.5 h-3.5 text-orange-500" />
                   </div>
                   <span className="text-2xl font-bold">
                     {dailyLog.calories_burned}
@@ -474,13 +573,16 @@ const ActivityCarousel = ({ selectedDate, onDataChange, onWaterClick, nutritionD
                 </p>
               </div>
 
-              <div className="flex items-center gap-2 mt-3">
-                <Footprints className="w-4 h-4 text-muted-foreground" />
-                <p className="text-xs text-muted-foreground">
-                  +{dailyLog.steps} {t('steps')}
-                </p>
+              <div className="flex items-center justify-between mt-3">
+                <div className="flex items-center gap-2">
+                  <Footprints className="w-4 h-4 text-muted-foreground" />
+                  <p className="text-xs text-muted-foreground">
+                    +{dailyLog.steps} {t('steps')}
+                  </p>
+                </div>
+                <Plus className="w-4 h-4 text-muted-foreground" />
               </div>
-            </div>
+            </button>
           </div>
 
 
@@ -562,6 +664,23 @@ const ActivityCarousel = ({ selectedDate, onDataChange, onWaterClick, nutritionD
           />
         ))}
       </div>
+
+      {/* Burned Calories Sheet */}
+      <BurnedCaloriesSheet
+        open={showBurnedSheet}
+        onOpenChange={setShowBurnedSheet}
+        currentBurned={dailyLog.calories_burned}
+        onSave={handleSaveBurnedCalories}
+      />
+
+      {/* Rollover Calories Sheet */}
+      <RolloverCaloriesSheet
+        open={showRolloverSheet}
+        onOpenChange={setShowRolloverSheet}
+        remainingCalories={caloriesLeft}
+        onRollover={handleRolloverCalories}
+        alreadyRolledOver={alreadyRolledOver}
+      />
     </div>
   );
 };

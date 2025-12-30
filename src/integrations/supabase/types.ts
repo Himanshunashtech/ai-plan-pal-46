@@ -48,6 +48,7 @@ export type Database = {
           id: string
           log_date: string
           notes: string | null
+          rollover_calories: number | null
           steps: number | null
           total_calories: number | null
           total_carbs: number | null
@@ -67,6 +68,7 @@ export type Database = {
           id?: string
           log_date?: string
           notes?: string | null
+          rollover_calories?: number | null
           steps?: number | null
           total_calories?: number | null
           total_carbs?: number | null
@@ -86,6 +88,7 @@ export type Database = {
           id?: string
           log_date?: string
           notes?: string | null
+          rollover_calories?: number | null
           steps?: number | null
           total_calories?: number | null
           total_carbs?: number | null
