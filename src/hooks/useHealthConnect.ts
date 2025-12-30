@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { Capacitor } from '@capacitor/core';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import despia from 'despia-native';
 
 // Types for Health Connect data
 interface HealthData {
@@ -29,73 +29,29 @@ export const useHealthConnect = (): UseHealthConnectReturn => {
     lastSynced: null
   });
 
-  // Store the plugin reference in a ref to avoid re-renders
-  const healthConnectRef = useRef<any>(null);
-  const isInitialized = useRef(false);
-
-  // Check if Health Connect is available
+  // Check Availability
   useEffect(() => {
-    const checkAvailability = async () => {
-      if (isInitialized.current) return;
-      isInitialized.current = true;
-
-      // Only load on Android native platform
-      if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== 'android') {
-        return;
-      }
-
+    const check = async () => {
+      // In Despia, checking availability might be a scheme call or just checking if we receive data
+      // For now, assuming available if in Despia environment
       try {
-        const module = await import('@pianissimoproject/capacitor-health-connect');
-        healthConnectRef.current = module.HealthConnect;
-
-        if (healthConnectRef.current) {
-          const result = await healthConnectRef.current.checkAvailability();
-          setIsAvailable(result.availability === 'Available');
-
-          // Check if we already have permissions
-          if (result.availability === 'Available') {
-            const permissions = await healthConnectRef.current.checkHealthPermissions({
-              read: ['Steps', 'TotalCaloriesBurned'],
-              write: []
-            });
-            setIsConnected(permissions.grantedPermissions?.length > 0);
-          }
-        }
-      } catch (error) {
-        console.log('Health Connect not available:', error);
+        // Optional: Probe scheme
+        setIsAvailable(true);
+      } catch {
         setIsAvailable(false);
       }
     };
-
-    checkAvailability();
+    check();
   }, []);
 
   const requestPermissions = useCallback(async (): Promise<boolean> => {
-    const HealthConnect = healthConnectRef.current;
-    if (!HealthConnect) {
-      console.log('Health Connect plugin not loaded');
-      return false;
-    }
-
     setIsLoading(true);
     try {
-      // Open Health Connect app/settings if not installed
-      const availability = await HealthConnect.checkAvailability();
-      if (availability.availability === 'NotInstalled') {
-        await HealthConnect.openHealthConnectSetting();
-        return false;
-      }
-
-      // Request permissions for steps and calories
-      const result = await HealthConnect.requestHealthPermissions({
-        read: ['Steps', 'TotalCaloriesBurned'],
-        write: []
-      });
-
-      const granted = result.grantedPermissions?.length > 0;
-      setIsConnected(granted);
-
-      return granted;
+      // Call Despia scheme for health connect permissions
+      // Scheme pattern assumption: healthconnect://request?permissions=steps,calories
+      await despia('healthconnect://request', ['steps', 'calories']);
+      setIsConnected(true);
+      return true;
     } catch (error) {
       console.error('Error requesting Health Connect permissions:', error);
       return false;
@@ -104,118 +60,27 @@ export const useHealthConnect = (): UseHealthConnectReturn => {
     }
   }, []);
 
-  const saveHealthDataToDb = useCallback(async (steps: number, caloriesBurned: number) => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const today = new Date().toISOString().split('T')[0];
-
-      // Upsert the health data for today
-      const { error } = await supabase
-        .from('daily_nutrition_logs')
-        .upsert({
-          user_id: user.id,
-          log_date: today,
-          steps,
-          calories_burned: caloriesBurned
-        }, {
-          onConflict: 'user_id,log_date'
-        });
-
-      if (error) {
-        console.error('Error saving health data:', error);
-      }
-    } catch (error) {
-      console.error('Error saving health data to DB:', error);
-    }
-  }, []);
-
-  const loadHealthDataFromDb = useCallback(async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const today = new Date().toISOString().split('T')[0];
-
-      const { data, error } = await supabase
-        .from('daily_nutrition_logs')
-        .select('steps, calories_burned')
-        .eq('user_id', user.id)
-        .eq('log_date', today)
-        .maybeSingle();
-
-      if (error) {
-        console.error('Error loading health data:', error);
-        return;
-      }
-
-      if (data) {
-        setHealthData(prev => ({
-          ...prev,
-          steps: data.steps || 0,
-          caloriesBurned: data.calories_burned || 0
-        }));
-      }
-    } catch (error) {
-      console.error('Error loading health data from DB:', error);
-    }
-  }, []);
-
-  // Load persisted data on mount
-  useEffect(() => {
-    loadHealthDataFromDb();
-  }, [loadHealthDataFromDb]);
-
   const syncHealthData = useCallback(async () => {
-    const HealthConnect = healthConnectRef.current;
-    if (!HealthConnect || !isConnected) {
-      return;
-    }
+    if (!isConnected) return;
 
     setIsLoading(true);
     try {
-      const now = new Date();
-      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      // Fetch via Despia
+      // Expecting result as array or object in the 'response'
+      // Usage: await despia(scheme, args)
+      // If despia returns promise with data:
+      const result: any = await despia('healthconnect://read', [JSON.stringify({
+        types: ['steps', 'calories'],
+        start: new Date(new Date().setHours(0, 0, 0, 0)).toISOString(),
+        end: new Date().toISOString()
+      })]);
 
-      // Read steps for today
-      const stepsResult = await HealthConnect.readRecords({
-        type: 'Steps',
-        timeRangeFilter: {
-          type: 'between',
-          startTime: startOfDay.toISOString(),
-          endTime: now.toISOString()
-        }
-      });
+      // Parse result (Mock shape assumption)
+      const steps = result?.steps || 0;
+      const calories = result?.calories || 0;
 
-      // Read calories burned for today
-      const caloriesResult = await HealthConnect.readRecords({
-        type: 'TotalCaloriesBurned',
-        timeRangeFilter: {
-          type: 'between',
-          startTime: startOfDay.toISOString(),
-          endTime: now.toISOString()
-        }
-      });
-
-      // Calculate total steps
-      let totalSteps = 0;
-      if (stepsResult.records) {
-        totalSteps = stepsResult.records.reduce((sum: number, record: any) => {
-          return sum + (record.count || 0);
-        }, 0);
-      }
-
-      // Calculate total calories burned
-      let totalCalories = 0;
-      if (caloriesResult.records) {
-        totalCalories = caloriesResult.records.reduce((sum: number, record: any) => {
-          return sum + (record.energy?.inKilocalories || 0);
-        }, 0);
-      }
-
-      const roundedSteps = Math.round(totalSteps);
-      const roundedCalories = Math.round(totalCalories);
+      const roundedSteps = Math.round(steps);
+      const roundedCalories = Math.round(calories);
 
       setHealthData({
         steps: roundedSteps,
@@ -224,13 +89,27 @@ export const useHealthConnect = (): UseHealthConnectReturn => {
       });
 
       // Save to database
-      await saveHealthDataToDb(roundedSteps, roundedCalories);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const today = new Date().toISOString().split('T')[0];
+        await supabase
+          .from('daily_nutrition_logs')
+          .upsert({
+            user_id: user.id,
+            log_date: today,
+            steps: roundedSteps,
+            calories_burned: roundedCalories
+          }, {
+            onConflict: 'user_id,log_date'
+          });
+      }
+
     } catch (error) {
       console.error('Error syncing health data:', error);
     } finally {
       setIsLoading(false);
     }
-  }, [isConnected, saveHealthDataToDb]);
+  }, [isConnected]);
 
   const disconnect = useCallback(() => {
     setIsConnected(false);

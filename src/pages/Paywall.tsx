@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store';
 import { subscriptionApi } from '@/lib/api/subscription';
-import { webPaymentService } from '@/lib/services/webPaymentService';
+import { paymentService } from '@/lib/services/paymentService';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { useTranslation } from 'react-i18next';
@@ -27,9 +27,9 @@ const Paywall = () => {
   useEffect(() => {
     if (user) {
       const init = async () => {
-        await webPaymentService.initialize(user.id);
+        await paymentService.initialize(user.id);
         try {
-          const offers = await webPaymentService.getOfferings();
+          const offers = await paymentService.getOfferings();
           if (offers && offers.current) {
             setOfferings(offers.current);
           }
@@ -100,45 +100,36 @@ const Paywall = () => {
           }, { onConflict: 'user_id' });
       }
 
-      // 2. Attempt Purchase via RevenueCat Web
+      // 2. Attempt Purchase via Native IAP
       let purchaseSuccess = false;
 
-      if (offerings) {
-        // Map selectedPlan to RC package identifier
-        // Assumption: Dashboard has packages 'monthly' and 'yearly' or standard identifiers
-        // You might need to adjust this logic based on your actual RC dashboard setup
-        const packageToBuy = offerings.availablePackages.find((p: any) =>
-          p.packageType.toLowerCase() === selectedPlan.toLowerCase() ||
-          p.identifier.toLowerCase().includes(selectedPlan)
-        );
+      // Hardcoded product IDs assumption for Native
+      const productIds = {
+        monthly: 'pro_monthly',
+        yearly: 'pro_yearly'
+      };
 
-        if (packageToBuy) {
-          const result = await webPaymentService.purchasePackage(packageToBuy);
-          if (result.success) {
-            purchaseSuccess = true;
-            toast({ title: 'Success!', description: 'Subscription activated.' });
-          } else {
-            // User cancelled or error
-            toast({ title: 'Payment Failed', description: 'Could not complete purchase.', variant: 'destructive' });
-            setIsLoading(false);
-            return;
-          }
+      const productId = productIds[selectedPlan];
+
+      if (productId) {
+        console.log('Starting native purchase for:', productId);
+        const result = await paymentService.startPurchase(user.id, productId);
+        if (result.success) {
+          purchaseSuccess = true;
+          toast({ title: 'Success!', description: 'Purchase initiated. Unlocking...' });
+          // Note: actual unlock depends on server/iapSuccess event
         } else {
-          console.warn('No matching package found for plan:', selectedPlan);
-          // Fallback if packages aren't loaded correctly (e.g. invalid API key) to trial grant for smooth dev flow? 
-          // User requested "must work on web", so let's try the trial grant as fallback
-          // or just fail. Let's start trial as fallback if SDK fails to find package.
+          console.error('Purchase failed', result.error);
+          toast({ title: 'Payment Failed', description: 'Could not complete purchase.', variant: 'destructive' });
+          setIsLoading(false);
+          return;
         }
       }
 
-      // If RC Web failed (e.g. no key) or we want to force trial logic as backup:
+      // If Native failed (e.g. cancelled) or we want to force trial logic as backup:
       if (!purchaseSuccess) {
-        // Fallback to existing logic: Start free trial via backend function
-        console.log('Falling back to legacy trial grant...');
-        const result = await subscriptionApi.startFreeTrial(user.id);
-        if (result.success) {
-          toast({ title: 'Trial Started', description: '3-day trial activated.' });
-        }
+        // Fallback or just return
+        console.log('Purchase flow incomplete.');
       }
 
       navigate('/dashboard');

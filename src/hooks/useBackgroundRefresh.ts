@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { preloadUserData } from '@/store/slices/authSlice';
-import { Capacitor } from '@capacitor/core';
+
 
 const INITIAL_BACKOFF = 30 * 1000; // 30 seconds
 const MAX_BACKOFF = 15 * 60 * 1000; // 15 minutes
@@ -49,25 +49,8 @@ export const useBackgroundRefresh = () => {
         };
         window.addEventListener('visibilitychange', handleVisibilityChange);
 
-        // 2. Capacitor App State (Dynamic import to avoid build errors if missing)
-        let appListener: any = null;
-        if (Capacitor.isNativePlatform()) {
-            import('@capacitor/app').then(({ App }) => {
-                appListener = App.addListener('appStateChange', ({ isActive }) => {
-                    if (isActive && user) {
-                        refresh();
-                    }
-                });
-            }).catch(() => {
-                console.warn('[Background Refresh] @capacitor/app not found, skipping native sync.');
-            });
-        }
-
         return () => {
             window.removeEventListener('visibilitychange', handleVisibilityChange);
-            if (appListener) {
-                appListener.then((l: any) => l.remove()).catch(() => { });
-            }
             if (timerRef.current) clearTimeout(timerRef.current);
         };
     }, [user, refresh]);
