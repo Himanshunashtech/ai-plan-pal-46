@@ -38,10 +38,19 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `You are a nutrition expert AI that analyzes food images. When given an image of food, identify all food items visible and provide detailed nutritional information including fiber, sugar, and sodium.
+            content: `You are a nutrition expert AI that analyzes food images. When given an image, first determine if it contains actual food items.
 
-Always respond with valid JSON in this exact format:
+IMPORTANT: If the image does NOT contain food (e.g., objects, text, people, animals, landscapes, electronics, etc.), respond with this exact JSON:
 {
+  "isFood": false,
+  "error": "No food detected. Please scan a real food item."
+}
+
+If the image DOES contain food, identify all food items visible and provide detailed nutritional information including fiber, sugar, and sodium.
+
+For food images, respond with valid JSON in this exact format:
+{
+  "isFood": true,
   "foodName": "Main dish name",
   "mealType": "breakfast|lunch|dinner|snack",
   "items": [
@@ -69,7 +78,7 @@ Always respond with valid JSON in this exact format:
             content: [
               {
                 type: 'text',
-                text: 'Analyze this food image. Identify each food item with its approximate position (as percentage from top-left), calories, and provide total nutritional breakdown including fiber, sugar, and sodium. Return only valid JSON.'
+                text: 'First, determine if this image contains actual food. If it does NOT contain food, respond with isFood: false. If it DOES contain food, analyze it and provide nutritional breakdown including fiber, sugar, and sodium. Return only valid JSON.'
               },
               {
                 type: 'image_url',
@@ -120,13 +129,21 @@ Always respond with valid JSON in this exact format:
       console.error('Failed to parse AI response:', parseError);
       // Return a default response if parsing fails
       analysisResult = {
-        foodName: "Food detected",
-        mealType: "snack",
-        items: [{ name: "Unknown food", calories: 200, position: { x: 50, y: 50 } }],
-        totalNutrition: { calories: 200, carbs: 25, protein: 10, fats: 8, fiber: 2, sugar: 5, sodium: 300 },
-        healthScore: 5,
-        servingSize: "1 serving"
+        isFood: false,
+        error: "Could not analyze image. Please try again with a clearer food photo."
       };
+    }
+
+    // Check if no food was detected
+    if (analysisResult.isFood === false) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          noFood: true,
+          error: analysisResult.error || "No food detected. Please scan a real food item."
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     return new Response(

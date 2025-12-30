@@ -3,11 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { useCamera } from '@/hooks/useCamera';
 import { analyzeFoodAsync, FoodAnalysisResult } from '@/lib/api/food-analysis';
 import { Button } from '@/components/ui/button';
-import { X, Camera, Zap, Loader2, Crown } from 'lucide-react';
+import { X, Camera, Zap, Loader2, Crown, AlertCircle } from 'lucide-react';
 import FoodLabels from './FoodLabels';
 import FoodResultSheet from './FoodResultSheet';
 import { toast } from 'sonner';
 import AISparkleOverlay from './AISparkleOverlay';
+import { useTranslation } from 'react-i18next';
 
 interface FoodScannerProps {
   onClose: () => void;
@@ -17,6 +18,7 @@ interface FoodScannerProps {
 
 const FoodScanner = ({ onClose, onFoodLogged, onSheetOpenChange }: FoodScannerProps) => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { videoRef, isStreaming, error, startCamera, stopCamera, capturePhoto } =
     useCamera();
 
@@ -31,6 +33,7 @@ const FoodScanner = ({ onClose, onFoodLogged, onSheetOpenChange }: FoodScannerPr
   const [rateLimitReached, setRateLimitReached] = useState(false);
   const [rateLimitInfo, setRateLimitInfo] =
     useState<{ used: number; limit: number } | null>(null);
+  const [noFoodDetected, setNoFoodDetected] = useState(false);
 
   useEffect(() => {
     startCamera();
@@ -45,6 +48,7 @@ const FoodScanner = ({ onClose, onFoodLogged, onSheetOpenChange }: FoodScannerPr
     setIsAnalyzing(true);
     setAnalyzeStatus('Optimizing image...');
     setRateLimitReached(false);
+    setNoFoodDetected(false);
 
     const photo = await capturePhoto();
     if (!photo) {
@@ -95,6 +99,9 @@ const FoodScanner = ({ onClose, onFoodLogged, onSheetOpenChange }: FoodScannerPr
         setRateLimitReached(true);
         setRateLimitInfo({ used: err.scansUsed, limit: err.scansLimit });
         toast.error('Daily scan limit reached');
+      } else if (err.noFood || err.message?.includes('No food detected')) {
+        setNoFoodDetected(true);
+        toast.error(t('no_food_detected'));
       } else {
         toast.error('Analysis failed');
       }
@@ -263,6 +270,29 @@ const FoodScanner = ({ onClose, onFoodLogged, onSheetOpenChange }: FoodScannerPr
                   Upgrade
                 </Button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* No Food Detected */}
+        {noFoodDetected && (
+          <div className="absolute inset-0 bg-black/80 z-20 flex items-center justify-center">
+            <div className="bg-card rounded-3xl p-6 mx-6 text-center max-w-sm">
+              <AlertCircle className="w-12 h-12 mx-auto text-orange-500 mb-4" />
+              <h3 className="text-xl font-bold mb-2">{t('no_food_detected')}</h3>
+              <p className="text-muted-foreground mb-4">
+                {t('scan_real_food')}
+              </p>
+              <Button
+                className="w-full"
+                onClick={() => {
+                  setNoFoodDetected(false);
+                  setCapturedImage(null);
+                  startCamera();
+                }}
+              >
+                {t('try_again')}
+              </Button>
             </div>
           </div>
         )}

@@ -38,6 +38,10 @@ export interface RateLimitError extends Error {
   scansLimit: number;
 }
 
+export interface NoFoodError extends Error {
+  noFood: boolean;
+}
+
 export interface EnqueueResult {
   jobId: string;
   usage?: {
@@ -132,6 +136,13 @@ export async function analyzeFood(imageBase64: string): Promise<FoodAnalysisResu
 
   if (error) {
     throw new Error(error.message || 'Failed to analyze food');
+  }
+
+  // Check for no food detected
+  if (data?.noFood) {
+    const noFoodError = new Error(data.error || 'No food detected. Please scan a real food item.') as NoFoodError;
+    noFoodError.noFood = true;
+    throw noFoodError;
   }
 
   if (!data?.success) {
