@@ -44,6 +44,8 @@ interface ProfileInfo {
   full_name: string | null;
   avatar_url: string | null;
   age: number | null;
+  burned_calories_enabled: boolean;
+  rollover_calories_enabled: boolean;
 }
 
 // import i18nInstance from "@/i18n"; // Removed direct import
@@ -62,6 +64,8 @@ const Profile = () => {
     full_name: null,
     avatar_url: null,
     age: null,
+    burned_calories_enabled: true,
+    rollover_calories_enabled: true,
   });
   const [loading, setLoading] = useState(() => {
     // Initialize from cache if available
@@ -105,14 +109,18 @@ const Profile = () => {
       try {
         const { data, error } = await supabase
           .from("profiles")
-          .select("full_name, avatar_url, age")
+          .select("full_name, avatar_url, age, burned_calories_enabled, rollover_calories_enabled")
           .eq("user_id", user.id)
           .maybeSingle();
 
         if (data) {
-          setProfileInfo(data);
-          // Update cache
-          localStorage.setItem(`profile_cache_${user.id}`, JSON.stringify(data));
+          const profileData = {
+            ...data,
+            burned_calories_enabled: data.burned_calories_enabled ?? true,
+            rollover_calories_enabled: data.rollover_calories_enabled ?? true,
+          };
+          setProfileInfo(profileData);
+          localStorage.setItem(`profile_cache_${user.id}`, JSON.stringify(profileData));
         }
       } catch (error) {
         console.error('Error fetching profile:', error);
@@ -126,6 +134,30 @@ const Profile = () => {
   const handleSignOut = async () => {
     await signOut();
     navigate("/auth", { replace: true });
+  };
+
+  const handleToggleChange = async (field: 'burned_calories_enabled' | 'rollover_calories_enabled', value: boolean) => {
+    if (!user) return;
+    
+    // Optimistically update UI
+    setProfileInfo(prev => ({ ...prev, [field]: value }));
+    
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ [field]: value, updated_at: new Date().toISOString() })
+        .eq('user_id', user.id);
+        
+      if (error) throw error;
+      
+      // Update cache
+      const updated = { ...profileInfo, [field]: value };
+      localStorage.setItem(`profile_cache_${user.id}`, JSON.stringify(updated));
+    } catch (error) {
+      console.error('Error updating toggle:', error);
+      // Rollback on error
+      setProfileInfo(prev => ({ ...prev, [field]: !value }));
+    }
   };
 
   const handleDeleteAccount = async () => {
@@ -228,9 +260,25 @@ const Profile = () => {
               </div>
 
               {/* Toggles */}
-              <ToggleItem label={t('add_burned')} subLabel={t('add_burned_desc')} />
-              <ToggleItem label={t('rollover')} subLabel={t('rollover_desc')} />
-              <ToggleItem label={t('badge_cel')} subLabel={t('badge_cel_desc')} defaultChecked={true} border={false} />
+              <ToggleItem 
+                label={t('add_burned')} 
+                subLabel={t('add_burned_desc')} 
+                checked={profileInfo.burned_calories_enabled}
+                onChange={(checked) => handleToggleChange('burned_calories_enabled', checked)}
+              />
+              <ToggleItem 
+                label={t('rollover')} 
+                subLabel={t('rollover_desc')} 
+                checked={profileInfo.rollover_calories_enabled}
+                onChange={(checked) => handleToggleChange('rollover_calories_enabled', checked)}
+              />
+              <ToggleItem 
+                label={t('badge_cel')} 
+                subLabel={t('badge_cel_desc')} 
+                checked={true} 
+                onChange={() => {}}
+                border={false} 
+              />
             </div>
           </div>
 
@@ -360,13 +408,19 @@ const MenuItem = ({ icon: Icon, label, onClick, border = true, danger = false, r
   </button>
 );
 
-const ToggleItem = ({ label, subLabel, defaultChecked = false, border = true }: any) => (
+const ToggleItem = ({ label, subLabel, checked, onChange, border = true }: {
+  label: string;
+  subLabel?: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  border?: boolean;
+}) => (
   <div className={clsx("flex items-center justify-between p-4", border && "border-b border-border/40")}>
     <div className="pr-4">
       <p className="font-medium text-sm">{label}</p>
       {subLabel && <p className="text-[10px] text-muted-foreground mt-0.5 leading-tight">{subLabel}</p>}
     </div>
-    <Switch defaultChecked={defaultChecked} />
+    <Switch checked={checked} onCheckedChange={onChange} />
   </div>
 );
 
