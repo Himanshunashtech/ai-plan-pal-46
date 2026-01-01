@@ -101,9 +101,6 @@ const Paywall = () => {
       }
 
       // 2. Attempt Purchase via Native IAP
-      let purchaseSuccess = false;
-
-      // Hardcoded product IDs assumption for Native
       const productIds = {
         monthly: 'pro_monthly',
         yearly: 'pro_yearly'
@@ -114,22 +111,24 @@ const Paywall = () => {
       if (productId) {
         console.log('Starting native purchase for:', productId);
         const result = await paymentService.startPurchase(user.id, productId);
+        
         if (result.success) {
-          purchaseSuccess = true;
-          toast({ title: 'Success!', description: 'Purchase initiated. Unlocking...' });
-          // Note: actual unlock depends on server/iapSuccess event
+          // Update local profile optimistically
+          await supabase
+            .from('profiles')
+            .update({
+              subscription_status: 'active',
+              updated_at: new Date().toISOString()
+            })
+            .eq('user_id', user.id);
+            
+          toast({ title: '🎉 Purchase Complete!', description: 'Welcome to Premium! Enjoy all features.' });
         } else {
           console.error('Purchase failed', result.error);
-          toast({ title: 'Payment Failed', description: 'Could not complete purchase.', variant: 'destructive' });
+          toast({ title: 'Payment Cancelled', description: 'Purchase was not completed.', variant: 'destructive' });
           setIsLoading(false);
           return;
         }
-      }
-
-      // If Native failed (e.g. cancelled) or we want to force trial logic as backup:
-      if (!purchaseSuccess) {
-        // Fallback or just return
-        console.log('Purchase flow incomplete.');
       }
 
       navigate('/dashboard');

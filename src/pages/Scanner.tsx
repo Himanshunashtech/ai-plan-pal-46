@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Home, BarChart3, Scan, User, Camera, Barcode, Image, BookOpen } from 'lucide-react';
+import { Home, BarChart3, Scan, User, Camera, Barcode, Image, BookOpen, Crown, Lock } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import FoodScanner from '@/components/scanner/FoodScanner';
@@ -8,10 +8,11 @@ import FoodLibrary from '@/components/scanner/FoodLibrary';
 import { FoodAnalysisResult, saveFoodEntry, uploadFoodImage } from '@/lib/api/food-analysis';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBadges } from '@/hooks/useBadges';
+import { usePremium } from '@/hooks/usePremium';
 import { BadgeCelebration } from '@/components/badges/BadgeCelebration';
 import { getBadgeById } from '@/lib/badges';
 import { toast } from '@/hooks/use-toast';
-
+import { Button } from '@/components/ui/button';
 
 import { useAppDispatch } from '@/store/hooks';
 import { addFoodEntryOptimistic, rollbackFoodEntry } from '@/store/slices/statsSlice';
@@ -20,12 +21,12 @@ import { preprocessImage } from '@/lib/image-preprocessing';
 type ScanMode = 'food' | 'barcode' | 'label' | 'library' | null;
 
 const Scanner = () => {
-
   const location = useLocation();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { user } = useAuth();
   const { earnBadge, hasBadge } = useBadges();
+  const { isPremium, isLoading: premiumLoading } = usePremium();
   const { t } = useTranslation();
   const [activeMode, setActiveMode] = useState<ScanMode>('food');
   const [earnedBadgeId, setEarnedBadgeId] = useState<string | null>(null);
@@ -98,6 +99,47 @@ const Scanner = () => {
   const handleTabChange = (id: ScanMode) => {
     setActiveMode(id);
   };
+
+  // Show paywall for non-premium users
+  if (!premiumLoading && !isPremium) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-background to-secondary/20 flex flex-col items-center justify-center px-6 safe-area-top safe-area-bottom">
+        <div className="text-center max-w-sm">
+          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center mx-auto mb-6 shadow-lg">
+            <Lock className="w-10 h-10 text-white" />
+          </div>
+          
+          <h1 className="text-2xl font-bold mb-3">{t('premium_feature')}</h1>
+          <p className="text-muted-foreground mb-8">
+            {t('upgrade_to_scan')}
+          </p>
+          
+          <div className="space-y-3">
+            <Button 
+              size="lg" 
+              className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
+              onClick={() => navigate('/paywall')}
+            >
+              <Crown className="w-5 h-5 mr-2" />
+              {t('unlock_premium')}
+            </Button>
+            
+            <Button 
+              variant="ghost" 
+              className="w-full"
+              onClick={() => navigate('/dashboard')}
+            >
+              {t('back_to_dashboard')}
+            </Button>
+          </div>
+          
+          <p className="text-xs text-muted-foreground mt-6">
+            {t('premium_benefits')}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
