@@ -1,59 +1,98 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import despia from 'despia-native';
 
+interface DespiaEnv {
+  uuid?: string;
+  onesignalplayerid?: string;
+  oneSignalPlayerId?: string;
+  platform?: string;
+}
+
 export function usePushNotifications() {
   const { user } = useAuth();
-  const [isSupported] = useState(true); // Assumed true in Despia
+  const [isSupported, setIsSupported] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Check if running in Despia environment
+  useEffect(() => {
+    const despiaEnv = despia as unknown as DespiaEnv;
+    const hasDespia = !!(despiaEnv?.uuid || despiaEnv?.onesignalplayerid || despiaEnv?.oneSignalPlayerId);
+    setIsSupported(hasDespia);
+    setIsLoading(false);
+  }, []);
 
   // Link user to OneSignal when authenticated
   useEffect(() => {
-    const linkUser = async () => {
-      if (!user?.id) return;
+    const linkDevice = async () => {
+      if (!user?.id || !isSupported) return;
 
+      setIsLoading(true);
       try {
-        // In Despia, we get the player ID directly from the environment
-        // typings might not be perfect on 'despia' object if library doesn't export them fully, casting to any if needed
-        const playerId = (despia as any).onesignalplayerid || (despia as any).oneSignalPlayerId;
+        const despiaEnv = despia as unknown as DespiaEnv;
+        const playerId = despiaEnv.onesignalplayerid || despiaEnv.oneSignalPlayerId;
+        const deviceUuid = despiaEnv.uuid;
 
         if (playerId) {
-          console.log('Registering Despia Player ID:', playerId);
-          await supabase.functions.invoke('push-notifications/register', {
-            body: { playerId, userId: user.id },
+          console.log('Registering Despia device:', { playerId, deviceUuid });
+          
+          const { error } = await supabase.functions.invoke('push-notifications/register', {
+            body: { 
+              playerId, 
+              userId: user.id,
+              deviceUuid,
+              platform: despiaEnv.platform || 'unknown'
+            },
           });
-          setIsSubscribed(true);
+
+          if (!error) {
+            setIsSubscribed(true);
+          } else {
+            console.error('Failed to register device:', error);
+          }
         } else {
-          // If debugging in browser without Despia wrapper, this will be missing.
-          console.log('No Despia Player ID found (are you in Despia app?)');
+          console.log('No OneSignal Player ID found (running outside Despia app)');
         }
       } catch (error) {
-        console.error('Failed to link user to OneSignal:', error);
+        console.error('Failed to link device to OneSignal:', error);
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    if (user) {
-      linkUser();
+    if (user && isSupported) {
+      linkDevice();
     }
-  }, [user]);
+  }, [user, isSupported]);
 
-  const requestPermission = async () => {
-    // In Despia/Native, permissions are usually requested via specific scheme/system dialog trigger
-    // OR implicit. Assuming generic notification permission request if needed.
-    // despia('settings://notifications') or similar might start intent.
-    // For now, assuming permissions are handled by the container or OS level prompt on first run.
-    console.log('Requesting permission logic would go here if not handled by container');
-    return true;
-  };
+  const requestPermission = useCallback(async () => {
+    // In Despia, trigger native notification permission dialog
+    try {
+      await despia('settings://notifications');
+      return true;
+    } catch {
+      // Permissions might already be granted or handled by OS
+      return true;
+    }
+  }, []);
 
-  const unsubscribe = async () => {
-    // Logic to opt-out on backend?
-    return true;
-  };
+  const unsubscribe = useCallback(async () => {
+    if (!user?.id) return false;
+    try {
+      await supabase.functions.invoke('push-notifications/unregister', {
+        body: { userId: user.id },
+      });
+      setIsSubscribed(false);
+      return true;
+    } catch (error) {
+      console.error('Failed to unsubscribe:', error);
+      return false;
+    }
+  }, [user?.id]);
 
-  const sendTestNotification = async () => {
+  const sendTestNotification = useCallback(async () => {
     if (!user?.id) return false;
     try {
       const { error } = await supabase.functions.invoke('push-notifications/send', {
@@ -69,7 +108,7 @@ export function usePushNotifications() {
       console.error('Failed to send test notification:', error);
       return false;
     }
-  };
+  }, [user?.id]);
 
   return {
     isSupported,
