@@ -53,7 +53,12 @@ export const translations = {
             "version": "Version",
             "home": "Home",
             "analytics": "Analytics",
-            "close": "Close"
+            "close": "Close",
+            "premium_feature": "Premium Feature",
+            "upgrade_to_scan": "Unlock unlimited food scanning and advanced nutrition tracking with Premium.",
+            "unlock_premium": "Unlock Premium",
+            "back_to_dashboard": "Back to Dashboard",
+            "premium_benefits": "Unlimited scans • AI insights • Priority support"
         }
     },
     hi: {
@@ -110,7 +115,12 @@ export const translations = {
             "version": "संस्करण",
             "home": "होम",
             "analytics": "एनालिटिक्स",
-            "close": "बंद करें"
+            "close": "बंद करें",
+            "premium_feature": "प्रीमियम फीचर",
+            "upgrade_to_scan": "प्रीमियम के साथ असीमित फूड स्कैनिंग और उन्नत पोषण ट्रैकिंग अनलॉक करें।",
+            "unlock_premium": "प्रीमियम अनलॉक करें",
+            "back_to_dashboard": "डैशबोर्ड पर वापस",
+            "premium_benefits": "असीमित स्कैन • AI इनसाइट्स • प्राथमिकता सहायता"
         }
     },
     fr: {
@@ -167,7 +177,12 @@ export const translations = {
             "version": "Version",
             "home": "Accueil",
             "analytics": "Analytique",
-            "close": "Fermer"
+            "close": "Fermer",
+            "premium_feature": "Fonctionnalité Premium",
+            "upgrade_to_scan": "Débloquez le scan illimité et le suivi nutritionnel avancé avec Premium.",
+            "unlock_premium": "Débloquer Premium",
+            "back_to_dashboard": "Retour au tableau de bord",
+            "premium_benefits": "Scans illimités • Insights IA • Support prioritaire"
         }
     },
     de: {
@@ -224,7 +239,12 @@ export const translations = {
             "version": "Version",
             "home": "Startseite",
             "analytics": "Analytik",
-            "close": "Schließen"
+            "close": "Schließen",
+            "premium_feature": "Premium-Funktion",
+            "upgrade_to_scan": "Schalten Sie unbegrenztes Food-Scanning und erweiterte Ernährungsverfolgung mit Premium frei.",
+            "unlock_premium": "Premium freischalten",
+            "back_to_dashboard": "Zurück zum Dashboard",
+            "premium_benefits": "Unbegrenzte Scans • KI-Einblicke • Prioritäts-Support"
         }
     }
 };
