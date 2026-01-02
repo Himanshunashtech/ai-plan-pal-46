@@ -13,7 +13,8 @@ import {
   History,
   Info,
   Smartphone,
-  Plus
+  Plus,
+  Crown
 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -28,6 +29,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import clsx from "clsx";
 import { useTranslation } from "react-i18next";
+import { usePremium } from "@/hooks/usePremium";
 
 import {
   AlertDialog,
@@ -59,6 +61,7 @@ const Profile = () => {
   const dispatch = useDispatch();
   const theme = useSelector((state: RootState) => state.ui.theme);
   const { t, i18n } = useTranslation();
+  const { isPremium } = usePremium();
 
   const [profileInfo, setProfileInfo] = useState<ProfileInfo>({
     full_name: null,
@@ -197,10 +200,15 @@ const Profile = () => {
               <User className="w-7 h-7 text-muted-foreground" />
             )}
           </div>
-          <div>
-            <p className="font-semibold text-lg leading-tight">
-              {profileInfo.full_name || "User"}
-            </p>
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <p className="font-semibold text-lg leading-tight">
+                {profileInfo.full_name || "User"}
+              </p>
+              {isPremium && (
+                <Crown className="w-5 h-5 text-amber-500 fill-amber-500" />
+              )}
+            </div>
             <p className="text-sm text-muted-foreground mt-0.5">
               {profileInfo.age ? `${profileInfo.age} ${t('years_old')}` : t('no_age_set')}
             </p>
