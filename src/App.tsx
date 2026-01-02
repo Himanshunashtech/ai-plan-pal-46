@@ -13,7 +13,7 @@ import OfflineBanner from "@/components/ui/OfflineBanner";
 import PublicRoute from "@/components/auth/PublicRoute";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import BottomNav from "@/components/layout/BottomNav";
-import Splash from "./pages/Splash";
+import { Navigate } from "react-router-dom";
 import Welcome from "./pages/Welcome";
 import Auth from "./pages/Auth";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -90,8 +90,7 @@ const AppContent = () => {
       <AnimatePresence mode="wait">
         <Routes location={location} key={location.pathname}>
           {/* Public routes */}
-          <Route path="/" element={<PublicRoute><Splash /></PublicRoute>} />
-          <Route path="/splash" element={<PublicRoute><Splash /></PublicRoute>} />
+          <Route path="/" element={<Navigate to="/welcome" replace />} />
           <Route path="/welcome" element={<PublicRoute><Welcome /></PublicRoute>} />
           <Route path="/auth" element={<PublicRoute><Auth /></PublicRoute>} />
           <Route path="/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
