@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Check, Sparkles, Bell, Crown, Loader2 } from 'lucide-react';
+import { Check, Sparkles, Bell, Crown, Loader2, RotateCcw } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store';
@@ -21,6 +21,7 @@ const Paywall = () => {
   const { generatedPlan, data } = useSelector((state: RootState) => state.onboarding);
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('yearly');
   const [isLoading, setIsLoading] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
   const [offerings, setOfferings] = useState<any>(null); // RC Offerings
 
   // Initialize Web Billing
@@ -144,6 +145,39 @@ const Paywall = () => {
     }
   };
 
+  const handleRestorePurchases = async () => {
+    if (!user) {
+      toast({ title: 'Error', description: 'Please log in to restore purchases', variant: 'destructive' });
+      return;
+    }
+
+    setIsRestoring(true);
+    try {
+      const hasActiveSubscription = await paymentService.restorePurchases(user.id);
+      
+      if (hasActiveSubscription) {
+        // Update local profile
+        await supabase
+          .from('profiles')
+          .update({
+            subscription_status: 'active',
+            updated_at: new Date().toISOString()
+          })
+          .eq('user_id', user.id);
+          
+        toast({ title: '🎉 Restored!', description: 'Your subscription has been restored.' });
+        navigate('/dashboard');
+      } else {
+        toast({ title: 'No purchases found', description: 'No active subscriptions were found to restore.', variant: 'destructive' });
+      }
+    } catch (error) {
+      console.error('Restore error:', error);
+      toast({ title: 'Error', description: 'Failed to restore purchases. Please try again.', variant: 'destructive' });
+    } finally {
+      setIsRestoring(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background flex flex-col safe-area-top safe-area-bottom px-6 ">
       <div className="flex-1 animate-fade-in py-6">
@@ -237,6 +271,25 @@ const Paywall = () => {
             ? '3 days free, then $20 per month'
             : '3 days free, then $120 per year ($10/mo)'}
         </p>
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="w-full text-muted-foreground" 
+          onClick={handleRestorePurchases}
+          disabled={isRestoring}
+        >
+          {isRestoring ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Restoring...
+            </>
+          ) : (
+            <>
+              <RotateCcw className="w-4 h-4 mr-2" />
+              Restore Purchases
+            </>
+          )}
+        </Button>
       </div>
     </div>
   );
