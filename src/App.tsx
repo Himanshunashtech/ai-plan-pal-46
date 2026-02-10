@@ -37,6 +37,7 @@ import PrivacyPolicy from "./pages/PrivacyPolicy";
 import WaterGoal from "./pages/WaterGoal";
 
 import { useBackgroundRefresh } from "@/hooks/useBackgroundRefresh";
+import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 const queryClient = new QueryClient();
@@ -47,6 +48,7 @@ const AppContent = () => {
 
   // Initialize background data synchronization with backoff
   useBackgroundRefresh();
+  useRealtimeSync();
 
   useEffect(() => {
     const root = window.document.documentElement;
